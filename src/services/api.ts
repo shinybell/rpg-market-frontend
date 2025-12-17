@@ -45,3 +45,37 @@ export const userApi = {
   deleteUser: () =>
     apiClient.delete('/api/users'),
 };
+
+export const itemApi = {
+  // アイテム一覧取得
+  getItems: (limit = 20, offset = 0) =>
+    apiClient.get('/api/items', { params: { limit, offset } }),
+
+  // アイテム詳細取得
+  getItem: (id: number) =>
+    apiClient.get(`/api/items/${id}`),
+
+  // 出品者のアイテム一覧取得
+  getItemsBySeller: (sellerId: number, limit = 20, offset = 0) =>
+    apiClient.get(`/api/items/seller/${sellerId}`, { params: { limit, offset } }),
+
+  // カテゴリ別アイテム一覧取得
+  getItemsByCategory: (categoryId: number, limit = 20, offset = 0) =>
+    apiClient.get(`/api/items/category/${categoryId}`, { params: { limit, offset } }),
+
+  // アイテム検索
+  searchItems: (keyword: string, limit = 20, offset = 0) =>
+    apiClient.get('/api/items/search', { params: { q: keyword, limit, offset } }),
+
+  // アイテム作成（認証必須）
+  createItem: (data: unknown) =>
+    apiClient.post('/api/items', data),
+
+  // アイテム更新（認証必須）
+  updateItem: (id: number, data: unknown) =>
+    apiClient.put(`/api/items/${id}`, data),
+
+  // アイテム削除（認証必須）
+  deleteItem: (id: number) =>
+    apiClient.delete(`/api/items/${id}`),
+};
