@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../hooks/useAuth';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 
 export const RegisterProfilePage = () => {
   const navigate = useNavigate();

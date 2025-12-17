@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import type { User } from 'firebase/auth';
+import type { User, AuthError } from 'firebase/auth';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
-  onAuthStateChanged,
-  AuthError
+  onAuthStateChanged
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { userApi } from '../services/api';
