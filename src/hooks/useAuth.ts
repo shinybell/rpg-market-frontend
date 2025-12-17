@@ -6,7 +6,8 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
-  onAuthStateChanged
+  onAuthStateChanged,
+  AuthError
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { userApi } from '../services/api';
@@ -53,15 +54,16 @@ export const useAuth = () => {
     });
 
     return () => unsubscribe();
-  }, []);  // 第２引数を空配列にして、初回レンダリング時のみ実行
+  }, []);
 
   const loginWithGoogle = async () => {
     try {
       setError(null);
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const authError = err as AuthError;
+      setError(authError.message);
       throw err;
     }
   };
@@ -70,8 +72,9 @@ export const useAuth = () => {
     try {
       setError(null);
       await signInWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const authError = err as AuthError;
+      setError(authError.message);
       throw err;
     }
   };
@@ -80,8 +83,9 @@ export const useAuth = () => {
     try {
       setError(null);
       await createUserWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const authError = err as AuthError;
+      setError(authError.message);
       throw err;
     }
   };
@@ -92,8 +96,9 @@ export const useAuth = () => {
       const response = await userApi.login(nickname);
       setProfile(response.data);
       return response.data;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message);
       throw err;
     }
   };
@@ -103,8 +108,9 @@ export const useAuth = () => {
       setError(null);
       await signOut(auth);
       setProfile(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const authError = err as AuthError;
+      setError(authError.message);
       throw err;
     }
   };

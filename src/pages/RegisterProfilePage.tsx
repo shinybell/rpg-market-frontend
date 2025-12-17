@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../hooks/useAuth';
+import { AxiosError } from 'axios';
 
 export const RegisterProfilePage = () => {
   const navigate = useNavigate();
@@ -35,8 +36,9 @@ export const RegisterProfilePage = () => {
     try {
       await registerBackend(nickname);
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.error || '登録に失敗しました');
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>;
+      setError(axiosError.response?.data?.error || '登録に失敗しました');
     } finally {
       setLoading(false);
     }
