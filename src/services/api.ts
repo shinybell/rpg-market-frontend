@@ -12,10 +12,26 @@ export const apiClient = axios.create({
 
 // リクエストインターセプター（トークン自動付与）
 apiClient.interceptors.request.use(async (config) => {
+  // Firebase認証状態が初期化されるまで待機
+  await new Promise<void>((resolve) => {
+    const unsubscribe = auth.onAuthStateChanged(() => {
+      unsubscribe();
+      resolve();
+    });
+  });
+
   const user = auth.currentUser;
   if (user) {
-    const token = await user.getIdToken();
-    config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await user.getIdToken();
+      config.headers.Authorization = `Bearer ${token}`;
+    } catch (error) {
+      console.error('トークン取得エラー:', error);
+      // トークン取得に失敗した場合でもリクエストを続行（401エラーが発生する）
+    }
+  } else {
+    console.warn('認証ユーザーが見つかりません');
+    // ユーザーが存在しない場合でもリクエストを続行（401エラーが発生する）
   }
   return config;
 });
@@ -26,10 +42,15 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       console.error('認証エラー: トークンが無効です');
+      // 401エラーの場合、認証状態をリセット
+      auth.signOut();
     }
     return Promise.reject(error);
   }
 );
+
+// デフォルトエクスポート（useImageUploadで使用）
+export const api = apiClient;
 
 // API エンドポイント
 export const userApi = {
@@ -44,4 +65,68 @@ export const userApi = {
 
   deleteUser: () =>
     apiClient.delete('/api/users'),
+};
+
+export const itemApi = {
+  // アイテム一覧取得
+  getItems: (limit = 20, offset = 0) =>
+    apiClient.get('/api/items', { params: { limit, offset } }),
+
+  // アイテム詳細取得
+  getItem: (id: number) =>
+    apiClient.get(`/api/items/${id}`),
+
+  // 出品者のアイテム一覧取得
+  getItemsBySeller: (sellerId: number, limit = 20, offset = 0) =>
+    apiClient.get(`/api/items/seller/${sellerId}`, { params: { limit, offset } }),
+
+  // カテゴリ別アイテム一覧取得
+  getItemsByCategory: (categoryId: number, limit = 20, offset = 0) =>
+    apiClient.get(`/api/items/category/${categoryId}`, { params: { limit, offset } }),
+
+  // アイテム検索
+  searchItems: (keyword: string, limit = 20, offset = 0) =>
+    apiClient.get('/api/items/search', { params: { q: keyword, limit, offset } }),
+
+  // アイテム作成（認証必須）
+  createItem: (data: unknown) =>
+    apiClient.post('/api/items', data),
+
+  // アイテム更新（認証必須）
+  updateItem: (id: number, data: unknown) =>
+    apiClient.put(`/api/items/${id}`, data),
+
+  // アイテム削除（認証必須）
+  deleteItem: (id: number) =>
+    apiClient.delete(`/api/items/${id}`),
+};
+
+export const likeApi = {
+  addLike: (itemId: number) =>
+    apiClient.post(`/api/items/${itemId}/likes`),
+
+  removeLike: (itemId: number) =>
+    apiClient.delete(`/api/items/${itemId}/likes`),
+
+  getLikeStatus: (itemId: number) =>
+    apiClient.get(`/api/items/${itemId}/likes/status`),
+};
+
+export const commentApi = {
+  addComment: (itemId: number, comment: string) =>
+    apiClient.post(`/api/items/${itemId}/comments`, { comment }),
+
+  getComments: (itemId: number, limit = 10, offset = 0) =>
+    apiClient.get(`/api/items/${itemId}/comments`, { params: { limit, offset } }),
+
+  deleteComment: (commentId: number) =>
+    apiClient.delete(`/api/comments/${commentId}`),
+};
+
+export const followApi = {
+  addFollow: (userId: number) =>
+    apiClient.post(`/api/users/${userId}/follow`),
+
+  removeFollow: (userId: number) =>
+    apiClient.delete(`/api/users/${userId}/follow`),
 };
