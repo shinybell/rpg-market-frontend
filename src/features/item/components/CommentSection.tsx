@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Paper,
   Typography,
@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { commentApi } from '../../../services/api';
+import { AxiosError } from 'axios';
 import { useAuth } from '../../../hooks/useAuth';
 
 interface Comment {
@@ -47,21 +48,21 @@ const CommentSection: React.FC<CommentSectionProps> = ({ itemId }) => {
     if (user && !authLoading) {
       fetchComments();
     }
-  }, [itemId, user, authLoading]);
+  }, [itemId, user, authLoading, fetchComments]);
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setLoading(true);
     try {
       const response = await commentApi.getComments(itemId);
       setComments(response.data);
-    } catch (error: any) {
-      const message = error.response?.data?.error || 'コメントの取得に失敗しました';
+    } catch (error: unknown) {
+      const message = error instanceof AxiosError ? error.response?.data?.error || 'コメントの取得に失敗しました' : 'コメントの取得に失敗しました';
       setError(message);
       console.error('Failed to fetch comments:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [itemId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,8 +79,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ itemId }) => {
       await commentApi.addComment(itemId, newComment.trim());
       setNewComment('');
       fetchComments(); // 再取得
-    } catch (error: any) {
-      const message = error.response?.data?.error || 'コメントの投稿に失敗しました';
+    } catch (error: unknown) {
+      const message = error instanceof AxiosError ? error.response?.data?.error || 'コメントの投稿に失敗しました' : 'コメントの投稿に失敗しました';
       setError(message);
       console.error('Failed to add comment:', error);
     } finally {
@@ -91,8 +92,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ itemId }) => {
     try {
       await commentApi.deleteComment(commentId);
       fetchComments(); // 再取得
-    } catch (error: any) {
-      const message = error.response?.data?.error || 'コメントの削除に失敗しました';
+    } catch (error: unknown) {
+      const message = error instanceof AxiosError ? error.response?.data?.error || 'コメントの削除に失敗しました' : 'コメントの削除に失敗しました';
       setError(message);
       console.error('Failed to delete comment:', error);
     }

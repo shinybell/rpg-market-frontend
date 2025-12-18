@@ -14,7 +14,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(async (config) => {
   // Firebase認証状態が初期化されるまで待機
   await new Promise<void>((resolve) => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(() => {
       unsubscribe();
       resolve();
     });
