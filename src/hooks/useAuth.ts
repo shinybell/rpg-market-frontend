@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { User, AuthError } from 'firebase/auth';
+import type { User as FirebaseUser, AuthError } from 'firebase/auth';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
@@ -28,13 +28,13 @@ export interface UserProfile {
 
 export const useAuth = () => {
   // ユーザー情報の状態管理
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       setUser(firebaseUser);
 
       if (firebaseUser) {
