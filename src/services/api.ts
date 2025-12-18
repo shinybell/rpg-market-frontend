@@ -82,3 +82,30 @@ export const itemApi = {
   deleteItem: (id: number) =>
     apiClient.delete(`/api/items/${id}`),
 };
+
+export const likeApi = {
+  addLike: (itemId: number) =>
+    apiClient.post(`/api/items/${itemId}/likes`),
+
+  removeLike: (itemId: number) =>
+    apiClient.delete(`/api/items/${itemId}/likes`),
+};
+
+export const commentApi = {
+  addComment: (itemId: number, comment: string) =>
+    apiClient.post(`/api/items/${itemId}/comments`, { comment }),
+
+  getComments: (itemId: number, limit = 10, offset = 0) =>
+    apiClient.get(`/api/items/${itemId}/comments`, { params: { limit, offset } }),
+
+  deleteComment: (commentId: number) =>
+    apiClient.delete(`/api/comments/${commentId}`),
+};
+
+export const followApi = {
+  addFollow: (userId: number) =>
+    apiClient.post(`/api/users/${userId}/follow`),
+
+  removeFollow: (userId: number) =>
+    apiClient.delete(`/api/users/${userId}/follow`),
+};
