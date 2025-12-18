@@ -19,6 +19,8 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { itemApi } from '../services/api';
 import type { Item } from '../types/item';
 import type { AxiosError } from 'axios';
+import LikeButton from '../features/item/components/LikeButton';
+import CommentSection from '../features/item/components/CommentSection';
 
 const conditionLabels: Record<string, string> = {
   new: '新品',
@@ -218,12 +220,9 @@ export const ItemDetailPage = () => {
             {item.status === 'on_sale' && item.stock > 0 ? '購入する' : '売り切れ'}
           </Button>
 
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary">
               👁 {item.view_count} 閲覧
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              ❤️ {item.likes_count} いいね
             </Typography>
             <Typography variant="caption" color="text.secondary">
               📦 在庫 {item.stock}
@@ -241,6 +240,26 @@ export const ItemDetailPage = () => {
               {item.description}
             </Typography>
           </Paper>
+        </Grid>
+
+        {/* いいねとコメント数 */}
+        <Grid size={{ xs: 12 }}>
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <LikeButton
+                itemId={item.id}
+                initialLikesCount={item.likes_count}
+              />
+              <Typography variant="body2" color="text.secondary">
+                💬 コメント {item.comments_count || 0}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* コメントセクション */}
+        <Grid size={{ xs: 12 }}>
+          <CommentSection itemId={item.id} />
         </Grid>
       </Grid>
     </Container>
