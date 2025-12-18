@@ -44,12 +44,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ itemId }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user && !authLoading) {
-      fetchComments();
-    }
-  }, [itemId, user, authLoading, fetchComments]);
-
   const fetchComments = useCallback(async () => {
     setLoading(true);
     try {
@@ -63,6 +57,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({ itemId }) => {
       setLoading(false);
     }
   }, [itemId]);
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      fetchComments();
+    }
+  }, [itemId, user, authLoading, fetchComments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
