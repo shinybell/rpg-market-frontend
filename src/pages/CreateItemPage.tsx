@@ -135,7 +135,7 @@ export const CreateItemPage = () => {
       if (selectedImages.length > 0) {
         try {
           imageUrls = await uploadImages(selectedImages);
-        } catch (err) {
+        } catch {
           setError('画像のアップロードに失敗しました');
           setLoading(false);
           return;

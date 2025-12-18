@@ -12,8 +12,6 @@ import {
   Divider,
   Alert,
   CircularProgress,
-  ImageList,
-  ImageListItem,
   IconButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
