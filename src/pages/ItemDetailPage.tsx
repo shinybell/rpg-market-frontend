@@ -12,8 +12,12 @@ import {
   Divider,
   Alert,
   CircularProgress,
+  ImageList,
+  ImageListItem,
+  IconButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { itemApi } from '../services/api';
 import type { Item } from '../types/item';
 import type { AxiosError } from 'axios';
@@ -43,6 +47,7 @@ export const ItemDetailPage = () => {
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -85,7 +90,8 @@ export const ItemDetailPage = () => {
     );
   }
 
-  const mainImage = item.images?.[0]?.image_url || '/placeholder.jpg';
+  const sortedImages = item.images?.sort((a, b) => a.display_order - b.display_order) || [];
+  const mainImage = sortedImages[selectedImageIndex]?.image_url || '/placeholder.jpg';
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -96,18 +102,65 @@ export const ItemDetailPage = () => {
       <Grid container spacing={4}>
         {/* 画像 */}
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper elevation={2}>
-            <Box
-              component="img"
-              src={mainImage}
-              alt={item.name}
-              sx={{
-                width: '100%',
-                height: 'auto',
-                maxHeight: 500,
-                objectFit: 'contain',
-              }}
-            />
+          <Paper elevation={2} sx={{ p: 2, position: 'relative' }}>
+            {/* メイン画像 */}
+            <Box sx={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+              <Box
+                component="img"
+                src={mainImage}
+                alt={item.name}
+                sx={{
+                  width: '100%',
+                  height: 'auto',
+                  maxHeight: 400,
+                  objectFit: 'contain',
+                }}
+                crossOrigin="anonymous"
+              />
+              
+              {/* 左矢印 */}
+              {sortedImages.length > 1 && selectedImageIndex > 0 && (
+                <IconButton
+                  onClick={() => setSelectedImageIndex((prev) => prev - 1)}
+                  sx={{
+                    position: 'absolute',
+                    left: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    bgcolor: 'rgba(0, 0, 0, 0.5)',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
+                  }}
+                >
+                  <ArrowBackIcon />
+                </IconButton>
+              )}
+              
+              {/* 右矢印 */}
+              {sortedImages.length > 1 && selectedImageIndex < sortedImages.length - 1 && (
+                <IconButton
+                  onClick={() => setSelectedImageIndex((prev) => prev + 1)}
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    bgcolor: 'rgba(0, 0, 0, 0.5)',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
+                  }}
+                >
+                  <ArrowForwardIcon />
+                </IconButton>
+              )}
+            </Box>
+            
+            {/* 画像カウンター */}
+            {sortedImages.length > 1 && (
+              <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                {selectedImageIndex + 1} / {sortedImages.length}
+              </Typography>
+            )}
           </Paper>
         </Grid>
 

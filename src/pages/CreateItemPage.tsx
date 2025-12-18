@@ -14,9 +14,15 @@ import {
   Select,
   InputAdornment,
   CircularProgress,
+  Card,
+  CardMedia,
+  IconButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { itemApi } from '../services/api';
+import { useImageUpload } from '../hooks/useImageUpload';
 import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
 import type { AxiosError } from 'axios';
 
@@ -25,6 +31,9 @@ export const CreateItemPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { uploadImages } = useImageUpload();
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
 
   const [formData, setFormData] = useState({
     category_id: 1,
@@ -36,6 +45,7 @@ export const CreateItemPage = () => {
     shipping_payer: 'seller' as ShippingPayer,
     shipping_days: '2-3' as ShippingDays,
     status: 'on_sale' as ItemStatus,
+    image_url: '',
   });
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { value: unknown } }) => {
@@ -43,6 +53,53 @@ export const CreateItemPage = () => {
       ...prev,
       [field]: event.target.value,
     }));
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files);
+
+    // ファイルサイズチェック（5MB以下）
+    for (const file of newFiles) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('各画像サイズは5MB以下にしてください');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('画像ファイルを選択してください');
+        return;
+      }
+    }
+
+    setError(null);
+
+    // 既存の画像に追加し、最大5枚に制限
+    setSelectedImages(prev => {
+      const combined = [...prev, ...newFiles];
+      const limited = combined.slice(0, 5);
+      
+      // プレビューを再生成
+      const newPreviews: string[] = [];
+      limited.forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews.push(reader.result as string);
+          if (newPreviews.length === limited.length) {
+            setImagePreviews(newPreviews);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      return limited;
+    });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -72,6 +129,24 @@ export const CreateItemPage = () => {
 
     try {
       setLoading(true);
+
+      // 画像がある場合はアップロード
+      let imageUrls: string[] = [];
+      if (selectedImages.length > 0) {
+        try {
+          imageUrls = await uploadImages(selectedImages);
+        } catch (err) {
+          setError('画像のアップロードに失敗しました');
+          setLoading(false);
+          return;
+        }
+      }
+
+      const images = imageUrls.map((url, index) => ({
+        image_url: url,
+        display_order: index,
+      }));
+
       await itemApi.createItem({
         category_id: formData.category_id,
         name: formData.name,
@@ -82,6 +157,7 @@ export const CreateItemPage = () => {
         shipping_payer: formData.shipping_payer,
         shipping_days: formData.shipping_days,
         status: formData.status,
+        images,
       });
 
       setSuccess(true);
@@ -120,6 +196,82 @@ export const CreateItemPage = () => {
         )}
 
         <Box component="form" onSubmit={handleSubmit}>
+          {/* 画像アップロード */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              商品画像
+            </Typography>
+
+            {imagePreviews.length > 0 ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {imagePreviews.map((preview, index) => (
+                  <Card key={index} sx={{ maxWidth: 200, position: 'relative' }}>
+                    <CardMedia
+                      component="img"
+                      image={preview}
+                      alt={`商品画像プレビュー ${index + 1}`}
+                      sx={{ height: 150, objectFit: 'contain' }}
+                    />
+                    <IconButton
+                      onClick={() => handleRemoveImage(index)}
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        bgcolor: 'background.paper',
+                        '&:hover': { bgcolor: 'background.default' },
+                      }}
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Card>
+                ))}
+                {imagePreviews.length < 5 && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 200, height: 150, border: '2px dashed #ccc', borderRadius: 1 }}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<PhotoCameraIcon />}
+                      size="small"
+                    >
+                      追加
+                      <input
+                        type="file"
+                        hidden
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageUpload}
+                      />
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              <Box>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<PhotoCameraIcon />}
+                  fullWidth
+                  sx={{ py: 2 }}
+                >
+                  画像を選択
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                  />
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  ※ 画像サイズは5MB以下、JPG/PNG形式、最大5枚まで
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
           {/* 商品名 */}
           <TextField
             fullWidth

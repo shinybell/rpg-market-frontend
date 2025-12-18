@@ -31,6 +31,9 @@ apiClient.interceptors.response.use(
   }
 );
 
+// デフォルトエクスポート（useImageUploadで使用）
+export const api = apiClient;
+
 // API エンドポイント
 export const userApi = {
   login: (nickname: string) =>
