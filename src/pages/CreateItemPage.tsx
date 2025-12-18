@@ -79,7 +79,7 @@ export const CreateItemPage = () => {
     setSelectedImages(prev => {
       const combined = [...prev, ...newFiles];
       const limited = combined.slice(0, 5);
-      
+
       // プレビューを再生成
       const newPreviews: string[] = [];
       limited.forEach((file) => {
@@ -92,7 +92,7 @@ export const CreateItemPage = () => {
         };
         reader.readAsDataURL(file);
       });
-      
+
       return limited;
     });
   };

@@ -117,7 +117,7 @@ export const ItemDetailPage = () => {
                 }}
                 crossOrigin="anonymous"
               />
-              
+
               {/* 左矢印 */}
               {sortedImages.length > 1 && selectedImageIndex > 0 && (
                 <IconButton
@@ -135,7 +135,7 @@ export const ItemDetailPage = () => {
                   <ArrowBackIcon />
                 </IconButton>
               )}
-              
+
               {/* 右矢印 */}
               {sortedImages.length > 1 && selectedImageIndex < sortedImages.length - 1 && (
                 <IconButton
@@ -154,7 +154,7 @@ export const ItemDetailPage = () => {
                 </IconButton>
               )}
             </Box>
-            
+
             {/* 画像カウンター */}
             {sortedImages.length > 1 && (
               <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
