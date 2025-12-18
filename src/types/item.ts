@@ -39,6 +39,7 @@ export interface Item {
   prefecture_id?: number;
   status: ItemStatus;
   likes_count: number;
+  comments_count?: number;
   view_count: number;
   images?: ItemImage[];
   created_at: string;

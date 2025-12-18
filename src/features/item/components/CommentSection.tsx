@@ -1,4 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Paper,
+  Typography,
+  Box,
+  TextField,
+  Button,
+  Avatar,
+  Divider,
+  IconButton,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { commentApi } from '../../../services/api';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -13,6 +26,7 @@ interface Comment {
     id: number;
     profile?: {
       nickname: string;
+      avatar_url?: string;
     };
   };
 }
@@ -85,63 +99,101 @@ const CommentSection: React.FC<CommentSectionProps> = ({ itemId }) => {
   };
 
   return (
-    <div className="mt-6">
-      <h3 className="text-lg font-semibold mb-4">コメント</h3>
+    <Paper variant="outlined" sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        コメント
+      </Typography>
 
       {/* コメント投稿フォーム */}
       {user ? (
-        <form onSubmit={handleSubmit} className="mb-4">
-          <textarea
+        <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
+          <TextField
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="コメントを入力..."
-            className="w-full p-2 border rounded resize-none"
+            multiline
             rows={3}
-            maxLength={500}
+            fullWidth
+            inputProps={{ maxLength: 500 }}
+            sx={{ mb: 2 }}
           />
-          <button
-            type="submit"
-            disabled={submitting || !newComment.trim()}
-            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-          >
-            {submitting ? '投稿中...' : 'コメントする'}
-          </button>
-          {error && <p className="mt-2 text-red-500">{error}</p>}
-        </form>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary">
+              {newComment.length}/500文字
+            </Typography>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={submitting || !newComment.trim()}
+              sx={{ minWidth: 120 }}
+            >
+              {submitting ? <CircularProgress size={20} /> : 'コメントする'}
+            </Button>
+          </Box>
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+        </Box>
       ) : (
-        <p className="mb-4 text-gray-500">コメントを投稿するにはログインが必要です</p>
+        <Alert severity="info" sx={{ mb: 3 }}>
+          コメントを投稿するにはログインが必要です
+        </Alert>
       )}
+
+      <Divider sx={{ my: 2 }} />
 
       {/* コメント一覧 */}
       {loading ? (
-        <p>読み込み中...</p>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
       ) : (
-        <div className="space-y-3">
+        <Box>
           {comments.map((comment) => (
-            <div key={comment.id} className="border-b pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium">
-                    {comment.user?.profile?.nickname || '匿名ユーザー'}
-                  </p>
-                  <p className="text-gray-700">{comment.comment}</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(comment.created_at).toLocaleString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDelete(comment.id)}
-                  className="text-red-500 hover:text-red-700"
+            <Box key={comment.id} sx={{ mb: 3, pb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Avatar
+                  src={comment.user?.profile?.avatar_url}
+                  sx={{ width: 32, height: 32 }}
                 >
-                  削除
-                </button>
-              </div>
-            </div>
+                  {comment.user?.profile?.nickname?.[0] || '?'}
+                </Avatar>
+                <Box sx={{ flex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {comment.user?.profile?.nickname || '匿名ユーザー'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(comment.created_at).toLocaleString()}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {comment.comment}
+                  </Typography>
+                </Box>
+                {user && user.uid === comment.user_id?.toString() && (
+                  <IconButton
+                    onClick={() => handleDelete(comment.id)}
+                    size="small"
+                    color="error"
+                    sx={{ ml: 'auto' }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            </Box>
           ))}
-          {comments.length === 0 && <p>コメントはありません</p>}
-        </div>
+          {comments.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              まだコメントはありません
+            </Typography>
+          )}
+        </Box>
       )}
-    </div>
+    </Paper>
   );
 };
 

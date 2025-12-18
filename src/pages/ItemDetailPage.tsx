@@ -224,11 +224,6 @@ export const ItemDetailPage = () => {
             <Typography variant="caption" color="text.secondary">
               👁 {item.view_count} 閲覧
             </Typography>
-            <LikeButton
-              itemId={item.id}
-              initialLikesCount={item.likes_count}
-              isLiked={false} // TODO: APIで取得
-            />
             <Typography variant="caption" color="text.secondary">
               📦 在庫 {item.stock}
             </Typography>
@@ -244,6 +239,21 @@ export const ItemDetailPage = () => {
             <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
               {item.description}
             </Typography>
+          </Paper>
+        </Grid>
+
+        {/* いいねとコメント数 */}
+        <Grid size={{ xs: 12 }}>
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <LikeButton
+                itemId={item.id}
+                initialLikesCount={item.likes_count}
+              />
+              <Typography variant="body2" color="text.secondary">
+                💬 コメント {item.comments_count || 0}
+              </Typography>
+            </Box>
           </Paper>
         </Grid>
 

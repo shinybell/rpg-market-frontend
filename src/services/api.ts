@@ -12,10 +12,26 @@ export const apiClient = axios.create({
 
 // リクエストインターセプター（トークン自動付与）
 apiClient.interceptors.request.use(async (config) => {
+  // Firebase認証状態が初期化されるまで待機
+  await new Promise<void>((resolve) => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      unsubscribe();
+      resolve();
+    });
+  });
+
   const user = auth.currentUser;
   if (user) {
-    const token = await user.getIdToken();
-    config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await user.getIdToken();
+      config.headers.Authorization = `Bearer ${token}`;
+    } catch (error) {
+      console.error('トークン取得エラー:', error);
+      // トークン取得に失敗した場合でもリクエストを続行（401エラーが発生する）
+    }
+  } else {
+    console.warn('認証ユーザーが見つかりません');
+    // ユーザーが存在しない場合でもリクエストを続行（401エラーが発生する）
   }
   return config;
 });
@@ -26,6 +42,8 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       console.error('認証エラー: トークンが無効です');
+      // 401エラーの場合、認証状態をリセット
+      auth.signOut();
     }
     return Promise.reject(error);
   }
@@ -89,6 +107,9 @@ export const likeApi = {
 
   removeLike: (itemId: number) =>
     apiClient.delete(`/api/items/${itemId}/likes`),
+
+  getLikeStatus: (itemId: number) =>
+    apiClient.get(`/api/items/${itemId}/likes/status`),
 };
 
 export const commentApi = {
