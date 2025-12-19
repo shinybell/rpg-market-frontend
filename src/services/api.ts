@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -10,30 +11,44 @@ export const apiClient = axios.create({
   },
 });
 
-// リクエストインターセプター（トークン自動付与）
-apiClient.interceptors.request.use(async (config) => {
-  // Firebase認証状態が初期化されるまで待機
-  await new Promise<void>((resolve) => {
+// トークンをキャッシュ
+let cachedToken: string | null = null;
+
+// Firebaseトークンの変更を監視
+auth.onIdTokenChanged(async (user) => {
+  if (user) {
+    cachedToken = await user.getIdToken();
+  } else {
+    cachedToken = null;
+  }
+});
+
+// Track if auth has been initialized
+let authInitialized = false;
+const ensureAuthInitialized = () => {
+  if (authInitialized) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
     const unsubscribe = auth.onAuthStateChanged(() => {
+      authInitialized = true;
       unsubscribe();
       resolve();
     });
   });
+};
 
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      const token = await user.getIdToken();
-      config.headers.Authorization = `Bearer ${token}`;
-    } catch (error) {
-      console.error('トークン取得エラー:', error);
-      // トークン取得に失敗した場合でもリクエストを続行（401エラーが発生する）
-    }
-  } else {
-    console.warn('認証ユーザーが見つかりません');
-    // ユーザーが存在しない場合でもリクエストを続行（401エラーが発生する）
+// リクエストインターセプター（トークン自動付与）
+apiClient.interceptors.request.use(async (config) => {
+  // Firebase認証状態が初期化されるまで待機（初回のみ）
+  await ensureAuthInitialized();
+
+  if (cachedToken) {
+    config.headers.Authorization = `Bearer ${cachedToken}`;
   }
+
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 // レスポンスインターセプター（エラーハンドリング）
@@ -41,7 +56,6 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.error('認証エラー: トークンが無効です');
       // 401エラーの場合、認証状態をリセット
       auth.signOut();
     }
@@ -54,8 +68,10 @@ export const api = apiClient;
 
 // API エンドポイント
 export const userApi = {
-  login: (nickname: string) =>
-    apiClient.post('/api/auth/login', { nickname }),
+  login: (nickname: string) => {
+    console.log('userApi.login called with nickname:', nickname);
+    return apiClient.post('/api/auth/login', { nickname });
+  },
 
   getMe: () =>
     apiClient.get('/api/auth/me'),
@@ -89,16 +105,41 @@ export const itemApi = {
     apiClient.get('/api/items/search', { params: { q: keyword, limit, offset } }),
 
   // アイテム作成（認証必須）
-  createItem: (data: unknown) =>
+  createItem: (data: {
+    category_id: number;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
+    condition: ItemCondition;
+    shipping_payer: ShippingPayer;
+    shipping_days: ShippingDays;
+    status: ItemStatus;
+    images?: Array<{ image_url: string; display_order: number }>;
+  }) =>
     apiClient.post('/api/items', data),
 
   // アイテム更新（認証必須）
-  updateItem: (id: number, data: unknown) =>
+  updateItem: (id: number, data: {
+    name?: string;
+    description?: string;
+    price?: number;
+    stock?: number;
+    condition?: ItemCondition;
+    shipping_payer?: ShippingPayer;
+    shipping_days?: ShippingDays;
+    status?: ItemStatus;
+    images?: Array<{ image_url: string; display_order: number }>;
+  }) =>
     apiClient.put(`/api/items/${id}`, data),
 
   // アイテム削除（認証必須）
   deleteItem: (id: number) =>
     apiClient.delete(`/api/items/${id}`),
+
+  // アイテム購入（認証必須）
+  purchaseItem: (id: number, data: { address_id: number; payment_method: string; points_used: number }) =>
+    apiClient.post(`/api/items/${id}/purchase`, data),
 };
 
 export const likeApi = {
@@ -129,4 +170,18 @@ export const followApi = {
 
   removeFollow: (userId: number) =>
     apiClient.delete(`/api/users/${userId}/follow`),
+};
+
+export const addressApi = {
+  getAddresses: () =>
+    apiClient.get('/api/addresses'),
+
+  createAddress: (data: { name: string; postal_code: string; address: string; phone: string }) =>
+    apiClient.post('/api/addresses', data),
+
+  updateAddress: (id: number, data: Partial<{ name: string; postal_code: string; address: string; phone: string }>) =>
+    apiClient.put(`/api/addresses/${id}`, data),
+
+  deleteAddress: (id: number) =>
+    apiClient.delete(`/api/addresses/${id}`),
 };
