@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import {
   Container,
   Box,
@@ -16,17 +15,10 @@ import { useAuth } from '../hooks/useAuth';
 import type { AxiosError } from 'axios';
 
 export const RegisterProfilePage = () => {
-  const navigate = useNavigate();
-  const { user, profile, registerBackend } = useAuth();
+  const { user, registerBackend } = useAuth();
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (profile) {
-      navigate('/dashboard');
-    }
-  }, [profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,11 +27,11 @@ export const RegisterProfilePage = () => {
 
     try {
       await registerBackend(nickname);
-      navigate('/dashboard');
+      // PrivateRoute in App.tsx will automatically redirect to /dashboard
+      // when isNewUser changes to false
     } catch (err) {
       const axiosError = err as AxiosError<{ error: string }>;
       setError(axiosError.response?.data?.error || '登録に失敗しました');
-    } finally {
       setLoading(false);
     }
   };

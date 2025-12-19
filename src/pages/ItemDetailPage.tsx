@@ -13,42 +13,57 @@ import {
   Alert,
   CircularProgress,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { itemApi } from '../services/api';
+import { itemApi, addressApi } from '../services/api';
 import type { Item } from '../types/item';
+import type { Address } from '../types/address';
 import type { AxiosError } from 'axios';
 import LikeButton from '../features/item/components/LikeButton';
 import CommentSection from '../features/item/components/CommentSection';
-
-const conditionLabels: Record<string, string> = {
-  new: '新品',
-  like_new: '未使用に近い',
-  very_good: '非常に良い',
-  good: '良い',
-  acceptable: '可',
-};
-
-const shippingPayerLabels: Record<string, string> = {
-  buyer: '購入者負担',
-  seller: '出品者負担',
-};
-
-const shippingDaysLabels: Record<string, string> = {
-  '1-2': '1〜2日で発送',
-  '2-3': '2〜3日で発送',
-  '4-7': '4〜7日で発送',
-};
+import { useAuth } from '../hooks/useAuth';
+import { conditionLabels, shippingPayerLabels, shippingDaysLabels } from '../constants/item';
 
 export const ItemDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [openPurchaseModal, setOpenPurchaseModal] = useState(false);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | 'new' | ''>('');
+  const [paymentMethod, setPaymentMethod] = useState('wallet');
+  const [pointsUsed, setPointsUsed] = useState(0);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  
+  // 新規住所作成用のstate
+  const [newAddress, setNewAddress] = useState({
+    name: '',
+    postal_code: '',
+    address: '',
+    phone: '',
+  });
+  const [creatingAddress, setCreatingAddress] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
 
+  // Fetch item when ID changes
   useEffect(() => {
     const fetchItem = async () => {
       if (!id) return;
@@ -68,6 +83,86 @@ export const ItemDetailPage = () => {
 
     fetchItem();
   }, [id]);
+
+  // Fetch addresses once when user is authenticated
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      if (!user) return;
+
+      try {
+        const response = await addressApi.getAddresses();
+        setAddresses(response.data);
+      } catch (err) {
+        console.error('Addresses fetch failed', err);
+      }
+    };
+
+    fetchAddresses();
+  }, [user]);
+
+  const handleCreateAddress = async () => {
+    // バリデーション
+    if (!newAddress.name || !newAddress.postal_code || !newAddress.address || !newAddress.phone) {
+      setAddressError('全ての項目を入力してください');
+      return;
+    }
+
+    if (!/^\d{3}-?\d{4}$/.test(newAddress.postal_code)) {
+      setAddressError('郵便番号は7桁の数字で入力してください（例: 123-4567）');
+      return;
+    }
+
+    if (!/^0\d{9,10}$/.test(newAddress.phone.replace(/-/g, ''))) {
+      setAddressError('電話番号が正しくありません（例: 090-1234-5678）');
+      return;
+    }
+
+    setCreatingAddress(true);
+    setAddressError(null);
+
+    try {
+      const response = await addressApi.createAddress(newAddress);
+      const createdAddress = response.data;
+      
+      // 住所リストに追加
+      setAddresses([...addresses, createdAddress]);
+      
+      // 作成した住所を自動選択
+      setSelectedAddressId(createdAddress.id);
+      
+      // フォームをリセット
+      setNewAddress({ name: '', postal_code: '', address: '', phone: '' });
+      
+      alert('住所を登録しました');
+    } catch (err) {
+      const error = err as AxiosError<{ error: string }>;
+      setAddressError(error.response?.data?.error || '住所の登録に失敗しました');
+    } finally {
+      setCreatingAddress(false);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (!item || !selectedAddressId || selectedAddressId === 'new') return;
+
+    setPurchasing(true);
+    try {
+      await itemApi.purchaseItem(item.id, {
+        address_id: selectedAddressId as number,
+        payment_method: paymentMethod,
+        points_used: pointsUsed,
+      });
+      alert('購入が完了しました！');
+      setOpenPurchaseModal(false);
+      setConfirmDialogOpen(false);
+      // 必要に応じてアイテム再取得
+    } catch (err) {
+      const error = err as AxiosError<{ error: string }>;
+      alert(error.response?.data?.error || '購入に失敗しました');
+    } finally {
+      setPurchasing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -92,6 +187,23 @@ export const ItemDetailPage = () => {
 
   const sortedImages = item.images?.sort((a, b) => a.display_order - b.display_order) || [];
   const mainImage = sortedImages[selectedImageIndex]?.image_url || '/placeholder.jpg';
+  
+  // 出品者本人かどうかを判定
+  const isOwner = profile && item.seller_id === profile.id;
+
+  // アイテム削除（出品キャンセル）処理
+  const handleDeleteItem = async () => {
+    if (!item || !window.confirm('本当にこのアイテムを削除しますか？')) return;
+
+    try {
+      await itemApi.deleteItem(item.id);
+      alert('アイテムを削除しました');
+      navigate('/items');
+    } catch (err) {
+      const error = err as AxiosError<{ error: string }>;
+      alert(error.response?.data?.error || 'アイテムの削除に失敗しました');
+    }
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -209,16 +321,39 @@ export const ItemDetailPage = () => {
             </Typography>
           </Paper>
 
-          {/* 購入ボタン */}
-          <Button
-            variant="contained"
-            size="large"
-            fullWidth
-            disabled={item.status !== 'on_sale' || item.stock === 0}
-            sx={{ mb: 2 }}
-          >
-            {item.status === 'on_sale' && item.stock > 0 ? '購入する' : '売り切れ'}
-          </Button>
+          {/* 購入ボタン / 編集・削除ボタン */}
+          {isOwner ? (
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                onClick={() => navigate(`/items/${item.id}/edit`)}
+              >
+                編集する
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                fullWidth
+                color="error"
+                onClick={handleDeleteItem}
+              >
+                削除
+              </Button>
+            </Box>
+          ) : (
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              disabled={item.status !== 'on_sale' || item.stock === 0}
+              onClick={() => setOpenPurchaseModal(true)}
+              sx={{ mb: 2 }}
+            >
+              {item.status === 'on_sale' && item.stock > 0 ? '購入する' : '売り切れ'}
+            </Button>
+          )}
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary">
@@ -262,6 +397,142 @@ export const ItemDetailPage = () => {
           <CommentSection itemId={item.id} />
         </Grid>
       </Grid>
+
+      {/* 購入モーダル */}
+      <Dialog open={openPurchaseModal} onClose={() => setOpenPurchaseModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>購入確認</DialogTitle>
+        <DialogContent>
+          <Typography variant="h6" gutterBottom>配送先</Typography>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>配送先を選択</InputLabel>
+            <Select
+              value={selectedAddressId}
+              onChange={(e) => setSelectedAddressId(e.target.value as number | 'new')}
+            >
+              {addresses.map((addr) => (
+                <MenuItem key={addr.id} value={addr.id}>
+                  {addr.name} - {addr.postal_code} {addr.address}
+                </MenuItem>
+              ))}
+              <MenuItem value="new">
+                <strong>+ 新規住所を登録</strong>
+              </MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* 新規住所作成フォーム */}
+          {selectedAddressId === 'new' && (
+            <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                新規住所登録
+              </Typography>
+              
+              {addressError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {addressError}
+                </Alert>
+              )}
+
+              <TextField
+                fullWidth
+                label="宛名"
+                value={newAddress.name}
+                onChange={(e) => setNewAddress({ ...newAddress, name: e.target.value })}
+                margin="normal"
+                required
+                helperText="例: 山田太郎"
+              />
+
+              <TextField
+                fullWidth
+                label="郵便番号"
+                value={newAddress.postal_code}
+                onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
+                margin="normal"
+                required
+                helperText="例: 123-4567"
+              />
+
+              <TextField
+                fullWidth
+                label="住所"
+                value={newAddress.address}
+                onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
+                margin="normal"
+                required
+                multiline
+                rows={2}
+                helperText="例: 東京都渋谷区渋谷1-1-1"
+              />
+
+              <TextField
+                fullWidth
+                label="電話番号"
+                value={newAddress.phone}
+                onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                margin="normal"
+                required
+                helperText="例: 090-1234-5678"
+              />
+
+              <Button
+                variant="contained"
+                onClick={handleCreateAddress}
+                disabled={creatingAddress}
+                fullWidth
+                sx={{ mt: 2 }}
+              >
+                {creatingAddress ? <CircularProgress size={24} /> : '住所を登録'}
+              </Button>
+            </Paper>
+          )}
+
+          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>支払い方法</Typography>
+          <RadioGroup
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
+          >
+            <FormControlLabel value="wallet" control={<Radio />} label="ウォレット残高" />
+            <FormControlLabel value="card" control={<Radio />} label="クレジットカード" />
+          </RadioGroup>
+
+          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>ポイント使用</Typography>
+          <TextField
+            type="number"
+            value={pointsUsed}
+            onChange={(e) => setPointsUsed(Math.max(0, parseInt(e.target.value) || 0))}
+            fullWidth
+            margin="normal"
+          />
+
+          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>最終料金</Typography>
+          <Typography variant="body1">¥{Math.max(0, item.price - pointsUsed)}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPurchaseModal(false)}>キャンセル</Button>
+          <Button 
+            onClick={() => setConfirmDialogOpen(true)} 
+            variant="contained" 
+            disabled={!selectedAddressId || selectedAddressId === 'new'}
+          >
+            購入確認へ
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 確認ダイアログ */}
+      <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
+        <DialogTitle>最終確認</DialogTitle>
+        <DialogContent>
+          <Typography>本当に購入しますか？</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialogOpen(false)}>キャンセル</Button>
+          <Button onClick={handlePurchase} variant="contained" disabled={purchasing}>
+            {purchasing ? <CircularProgress size={20} /> : '購入'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

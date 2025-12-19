@@ -1,18 +1,11 @@
 import { Card, CardContent, CardMedia, Typography, Box, Chip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { Item } from '../../../types/item';
+import { conditionLabels } from '../../../constants/item';
 
 interface ItemCardProps {
   item: Item;
 }
-
-const conditionLabels: Record<string, string> = {
-  new: '新品',
-  like_new: '未使用に近い',
-  very_good: '非常に良い',
-  good: '良い',
-  acceptable: '可',
-};
 
 export const ItemCard = ({ item }: ItemCardProps) => {
   const navigate = useNavigate();
