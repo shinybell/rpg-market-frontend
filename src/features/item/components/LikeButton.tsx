@@ -18,60 +18,45 @@ const LikeButton: React.FC<LikeButtonProps> = ({
   onLikeChange,
 }) => {
   const [likesCount, setLikesCount] = useState(initialLikesCount);
-  const [liked, setLiked] = useState(initialIsLiked || false);
+  const [liked, setLiked] = useState(initialIsLiked ?? false);
   const [loading, setLoading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
 
+  // Only fetch like status if not provided by parent
   useEffect(() => {
-    const fetchLikeStatus = async () => {
-      try {
-        const response = await likeApi.getLikeStatus(itemId);
-        setLiked(response.data.liked);
-        setInitialized(true);
-      } catch (error) {
-        console.error('Failed to fetch like status:', error);
-        setInitialized(true); // エラー時も初期化完了
-      }
-    };
-
-    if (!initialized) {
+    if (initialIsLiked === undefined) {
+      const fetchLikeStatus = async () => {
+        try {
+          const response = await likeApi.getLikeStatus(itemId);
+          setLiked(response.data.liked);
+        } catch (error) {
+          console.error('Failed to fetch like status:', error);
+        }
+      };
       fetchLikeStatus();
     }
-  }, [itemId, initialized]);
+  }, [itemId, initialIsLiked]);
 
   const handleLike = async () => {
-    if (loading || !initialized) return;
+    if (loading) return;
     setLoading(true);
     try {
       if (liked) {
         await likeApi.removeLike(itemId);
         setLikesCount(prev => prev - 1);
         setLiked(false);
+        onLikeChange?.(likesCount - 1, false);
       } else {
         await likeApi.addLike(itemId);
         setLikesCount(prev => prev + 1);
         setLiked(true);
+        onLikeChange?.(likesCount + 1, true);
       }
-      onLikeChange?.(likesCount, liked);
     } catch (error) {
       console.error('Like operation failed:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  if (!initialized) {
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <IconButton disabled>
-          <FavoriteBorderIcon />
-        </IconButton>
-        <Typography variant="body2" color="text.secondary">
-          {likesCount}
-        </Typography>
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -17,19 +17,31 @@ import { useAuth } from '../hooks/useAuth';
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { loginWithGoogle, loginWithEmail, registerWithEmail, error } = useAuth();
+  const { loginWithGoogle, loginWithEmail, registerWithEmail, error, user, isNewUser } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegister, setIsRegister] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      if (isNewUser) {
+        navigate('/register-profile');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, isNewUser, navigate]);
+
   // リダイレクト先を取得（デフォルトは /register-profile）
   const from = (location.state as { from?: string })?.from || '/register-profile';
 
   const handleGoogleLogin = async () => {
+    console.log('handleGoogleLogin called');
     try {
+      console.log('Calling loginWithGoogle...');
       await loginWithGoogle();
-      navigate(from, { replace: true });
+      // signInWithRedirect will redirect, no need to navigate
     } catch (err) {
       console.error('Google ログインエラー:', err);
     }
@@ -43,7 +55,6 @@ export const LoginPage = () => {
       } else {
         await loginWithEmail(email, password);
       }
-      navigate(from, { replace: true });
     } catch (err) {
       console.error('認証エラー:', err);
     }
