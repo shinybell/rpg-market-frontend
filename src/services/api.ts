@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -104,11 +105,32 @@ export const itemApi = {
     apiClient.get('/api/items/search', { params: { q: keyword, limit, offset } }),
 
   // アイテム作成（認証必須）
-  createItem: (data: unknown) =>
+  createItem: (data: {
+    category_id: number;
+    name: string;
+    description: string;
+    price: number;
+    stock: number;
+    condition: ItemCondition;
+    shipping_payer: ShippingPayer;
+    shipping_days: ShippingDays;
+    status: ItemStatus;
+    images?: Array<{ image_url: string; display_order: number }>;
+  }) =>
     apiClient.post('/api/items', data),
 
   // アイテム更新（認証必須）
-  updateItem: (id: number, data: unknown) =>
+  updateItem: (id: number, data: {
+    name?: string;
+    description?: string;
+    price?: number;
+    stock?: number;
+    condition?: ItemCondition;
+    shipping_payer?: ShippingPayer;
+    shipping_days?: ShippingDays;
+    status?: ItemStatus;
+    images?: Array<{ image_url: string; display_order: number }>;
+  }) =>
     apiClient.put(`/api/items/${id}`, data),
 
   // アイテム削除（認証必須）

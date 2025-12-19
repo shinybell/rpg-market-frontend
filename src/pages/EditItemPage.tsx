@@ -221,7 +221,6 @@ export const EditItemPage = () => {
         ...existingImages.map(img => img.image_url),
         ...newImageUrls,
       ];
-
       const images = allImageUrls.map((url, index) => ({
         image_url: url,
         display_order: index,
@@ -236,7 +235,7 @@ export const EditItemPage = () => {
         shipping_payer: formData.shipping_payer,
         shipping_days: formData.shipping_days,
         status: formData.status,
-        // Note: 画像更新APIが別途必要な場合は調整が必要
+        images,
       });
 
       setSuccess(true);

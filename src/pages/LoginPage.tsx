@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -16,7 +16,6 @@ import { useAuth } from '../hooks/useAuth';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { loginWithGoogle, loginWithEmail, registerWithEmail, error, user, isNewUser } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -32,9 +31,6 @@ export const LoginPage = () => {
       }
     }
   }, [user, isNewUser, navigate]);
-
-  // リダイレクト先を取得（デフォルトは /register-profile）
-  const from = (location.state as { from?: string })?.from || '/register-profile';
 
   const handleGoogleLogin = async () => {
     console.log('handleGoogleLogin called');
