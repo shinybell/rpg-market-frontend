@@ -12,6 +12,7 @@ import { ItemListPage } from './pages/ItemListPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
 import { CreateItemPage } from './pages/CreateItemPage';
 import { EditItemPage } from './pages/EditItemPage';
+import { MessagePage } from './pages/MessagePage';
 import { theme } from './theme/theme';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -113,6 +114,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <ItemDetailPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/messages/:transactionId"
+                element={
+                  <PrivateRoute>
+                    <MessagePage />
                   </PrivateRoute>
                 }
               />
