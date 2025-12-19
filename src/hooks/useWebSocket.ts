@@ -10,6 +10,7 @@ export const useWebSocket = (transactionId: number) => {
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const connectRef = useRef<(() => Promise<void>) | null>(null);
 
   const connect = useCallback(async () => {
     try {
@@ -79,7 +80,9 @@ export const useWebSocket = (transactionId: number) => {
         // 5秒後に自動再接続
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('Reconnecting...');
-          connect();
+          if (connectRef.current) {
+            connectRef.current();
+          }
         }, 5000);
       };
 
@@ -91,6 +94,13 @@ export const useWebSocket = (transactionId: number) => {
   }, [transactionId]);
 
   useEffect(() => {
+    // connectRefを更新
+    connectRef.current = connect;
+  }, [connect]);
+
+  useEffect(() => {
+    // WebSocketの接続はsetStateを含むが、外部システムとの同期のため許容
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     connect();
 
     return () => {

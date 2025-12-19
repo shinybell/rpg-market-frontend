@@ -111,7 +111,7 @@ export const ItemDetailPage = () => {
       try {
         const response = await extendedItemApi.getItemTransaction(Number(id));
         setTransaction(response.data);
-      } catch (err) {
+      } catch {
         // 取引が存在しない、またはアクセス権限がない場合はエラーを無視
         setTransaction(null);
       }

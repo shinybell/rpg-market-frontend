@@ -75,9 +75,9 @@ export const MessagePage = () => {
   };
   const composingRef = useRef(false);
 
-  const handleKeyPress = (e: React.KeyboardEvent<any>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // IME 変換中は送信しない
-    if ((e as any).nativeEvent?.isComposing || composingRef.current) return;
+    if (e.nativeEvent?.isComposing || composingRef.current) return;
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
