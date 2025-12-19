@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -19,6 +19,10 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  Tabs,
+  Tab,
+  CardMedia,
+  CardActions,
 } from '@mui/material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import StarsIcon from '@mui/icons-material/Stars';
@@ -26,14 +30,25 @@ import EditIcon from '@mui/icons-material/Edit';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import { userApi } from '../services/api';
+import MessageIcon from '@mui/icons-material/Message';
+import { userApi, extendedItemApi } from '../services/api';
 import { useImageUpload } from '../hooks/useImageUpload';
 import type { AxiosError } from 'axios';
+import type { Item } from '../types/item';
+import type { Transaction } from '../types/message';
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
   const { profile, logout } = useAuth();
   const { uploadImages } = useImageUpload();
+
+  // タブ管理
+  const [currentTab, setCurrentTab] = useState(0);
+  const [myItems, setMyItems] = useState<Item[]>([]);
+  const [myPurchases, setMyPurchases] = useState<Transaction[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [messageLoadingId, setMessageLoadingId] = useState<number | null>(null);
+  const [messageError, setMessageError] = useState<string | null>(null);
 
   // プロフィール編集用の状態
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -52,6 +67,27 @@ export const DashboardPage = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // 出品商品と購入商品を取得
+  useEffect(() => {
+    const fetchItems = async () => {
+      setItemsLoading(true);
+      try {
+        const [itemsResponse, purchasesResponse] = await Promise.all([
+          extendedItemApi.getMyItems(),
+          extendedItemApi.getMyPurchases(),
+        ]);
+        setMyItems(itemsResponse.data || []);
+        setMyPurchases(purchasesResponse.data || []);
+      } catch (err) {
+        console.error('Failed to fetch items:', err);
+      } finally {
+        setItemsLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, []);
 
   // ログアウト処理
   const handleLogout = async () => {
@@ -256,7 +292,7 @@ export const DashboardPage = () => {
               アカウント管理
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
               <Button
                 variant="outlined"
@@ -308,6 +344,216 @@ export const DashboardPage = () => {
               </Typography>
             </CardContent>
           </Card>
+        </Grid>
+
+        {/* 商品一覧セクション */}
+        <Grid size={{ xs: 12 }}>
+          <Paper sx={{ mt: 3 }}>
+            <Tabs
+              value={currentTab}
+              onChange={(_, newValue) => setCurrentTab(newValue)}
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab label={`出品中の商品 (${myItems.filter(i => i.status === 'on_sale').length})`} />
+              <Tab label={`下書き (${myItems.filter(i => i.status === 'draft').length})`} />
+              <Tab label={`売却済み (${myItems.filter(i => i.status === 'sold_out').length})`} />
+              <Tab label={`購入した商品 (${myPurchases.length})`} />
+            </Tabs>
+
+            <Box sx={{ p: 3 }}>
+                {messageError && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {messageError}
+                  </Alert>
+                )}
+              {itemsLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <Typography>読み込み中...</Typography>
+                </Box>
+              ) : (
+                <>
+                  {/* 出品中/下書き/売却済みタブ */}
+                  {currentTab >= 0 && currentTab <= 2 && (
+                    <Grid container spacing={2}>
+                      {(() => {
+                        const statusMap: Record<number, Item['status']> = {
+                          0: 'on_sale',
+                          1: 'draft',
+                          2: 'sold_out',
+                        };
+                        const status = statusMap[currentTab];
+                        const filtered = myItems.filter((i) => i.status === status);
+
+                        if (filtered.length === 0) {
+                          return (
+                            <Grid size={{ xs: 12 }}>
+                              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 4 }}>
+                                {status === 'on_sale' && '出品中の商品がありません'}
+                                {status === 'draft' && '下書きの商品がありません'}
+                                {status === 'sold_out' && '売却済みの商品がありません'}
+                              </Typography>
+                            </Grid>
+                          );
+                        }
+
+                        return filtered.map((item) => (
+                          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id}>
+                            <Card>
+                              {item.images && item.images.length > 0 && (
+                                <CardMedia
+                                  component="img"
+                                  height="200"
+                                  image={item.images[0].image_url}
+                                  alt={item.name}
+                                  sx={{ objectFit: 'cover' }}
+                                />
+                              )}
+                              <CardContent>
+                                <Typography variant="h6" noWrap>
+                                  {item.name}
+                                </Typography>
+                                <Typography variant="h5" color="primary" sx={{ mt: 1 }}>
+                                  ¥{item.price.toLocaleString()}
+                                </Typography>
+                                <Chip
+                                  label={item.status}
+                                  size="small"
+                                  color={item.status === 'on_sale' ? 'success' : 'default'}
+                                  sx={{ mt: 1 }}
+                                />
+                              </CardContent>
+                              <CardActions sx={{ flexDirection: 'column', gap: 1 }}>
+                                <Button
+                                  size="small"
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                  fullWidth
+                                >
+                                  商品詳細
+                                </Button>
+
+                                {status === 'draft' && (
+                                  <Button size="small" onClick={() => navigate(`/items/${item.id}/edit`)} fullWidth>
+                                    編集
+                                  </Button>
+                                )}
+
+                                {status === 'sold_out' && (
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    startIcon={<MessageIcon />}
+                                    onClick={async () => {
+                                      setMessageError(null);
+                                      setMessageLoadingId(item.id);
+                                      try {
+                                        // まずフロントの購入履歴から該当取引を探す
+                                        let localTx = myPurchases.find((t) => t.item_id === item.id);
+
+                                        // 見つからなければ購入履歴を最新化して再検索（購入直後のケースに対応）
+                                        if (!localTx) {
+                                          try {
+                                            const purchasesRes = await extendedItemApi.getMyPurchases();
+                                            setMyPurchases(purchasesRes.data || []);
+                                            localTx = (purchasesRes.data || []).find((t: Transaction) => t.item_id === item.id);
+                                          } catch (err) {
+                                            console.error('Failed to refresh purchases:', err);
+                                          }
+                                        }
+
+                                        if (localTx && localTx.id) {
+                                          navigate(`/messages/${localTx.id}`);
+                                        } else {
+                                          const res = await extendedItemApi.getItemTransaction(item.id);
+                                          const tx: Transaction = res.data;
+                                          if (!tx || !tx.id) {
+                                            setMessageError('取引情報が見つかりません');
+                                          } else {
+                                            navigate(`/messages/${tx.id}`);
+                                          }
+                                        }
+                                      } catch (err) {
+                                        console.error(err);
+                                        setMessageError('取引情報の取得に失敗しました');
+                                      } finally {
+                                        setMessageLoadingId(null);
+                                      }
+                                    }}
+                                    disabled={messageLoadingId === item.id}
+                                    fullWidth
+                                  >
+                                    メッセージ
+                                  </Button>
+                                )}
+                              </CardActions>
+                            </Card>
+                          </Grid>
+                        ));
+                      })()}
+                    </Grid>
+                  )}
+
+                  {/* 購入商品タブ */}
+                  {currentTab === 3 && (
+                    <Grid container spacing={2}>
+                      {myPurchases.length === 0 ? (
+                        <Grid size={{ xs: 12 }}>
+                          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 4 }}>
+                            購入した商品がありません
+                          </Typography>
+                        </Grid>
+                      ) : (
+                        myPurchases.map((transaction) => (
+                          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={transaction.id}>
+                            <Card>
+                              {transaction.item?.images && transaction.item.images.length > 0 && (
+                                <CardMedia
+                                  component="img"
+                                  height="200"
+                                  image={transaction.item.images[0].image_url}
+                                  alt={transaction.item.name}
+                                  sx={{ objectFit: 'cover' }}
+                                />
+                              )}
+                              <CardContent>
+                                <Typography variant="h6" noWrap>
+                                  {transaction.item?.name}
+                                </Typography>
+                                <Typography variant="h5" color="primary" sx={{ mt: 1 }}>
+                                  ¥{transaction.price.toLocaleString()}
+                                </Typography>
+                                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                                  <Chip label={transaction.transaction_status} size="small" />
+                                  <Chip label={transaction.payment_status} size="small" color="primary" />
+                                </Box>
+                              </CardContent>
+                              <CardActions sx={{ flexDirection: 'column', gap: 1 }}>
+                                <Button
+                                  size="small"
+                                  onClick={() => navigate(`/items/${transaction.item_id}`)}
+                                  fullWidth
+                                >
+                                  商品詳細
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  startIcon={<MessageIcon />}
+                                  onClick={() => navigate(`/messages/${transaction.id}`)}
+                                  fullWidth
+                                >
+                                  メッセージ
+                                </Button>
+                              </CardActions>
+                            </Card>
+                          </Grid>
+                        ))
+                      )}
+                    </Grid>
+                  )}
+                </>
+              )}
+            </Box>
+          </Paper>
         </Grid>
       </Grid>
 
