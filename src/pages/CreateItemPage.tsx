@@ -17,11 +17,21 @@ import {
   Card,
   CardMedia,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton,
+  Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { itemApi } from '../services/api';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { itemApi, generationApi } from '../services/api';
 import { useImageUpload } from '../hooks/useImageUpload';
 import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
 import type { AxiosError } from 'axios';
@@ -34,6 +44,11 @@ export const CreateItemPage = () => {
   const { uploadImages } = useImageUpload();
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+
+  // AI生成用のstate
+  const [generating, setGenerating] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [formData, setFormData] = useState({
     category_id: 1,
@@ -100,6 +115,61 @@ export const CreateItemPage = () => {
   const handleRemoveImage = (index: number) => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // AI生成ハンドラー
+  const handleGenerateDescription = async () => {
+    if (!formData.name) {
+      setError('商品名を入力してからAI生成をお試しください');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setError(null);
+
+      // カテゴリ名を取得
+      const categoryMap: Record<number, string> = {
+        1: '武器',
+        2: '防具',
+        3: 'アクセサリー',
+        4: '消耗品',
+        5: '素材',
+      };
+
+      // 状態名を取得
+      const conditionMap: Record<ItemCondition, string> = {
+        new: '新品',
+        like_new: '未使用に近い',
+        very_good: '非常に良い',
+        good: '良い',
+        acceptable: '可',
+      };
+
+      const response = await generationApi.generateDescription({
+        item_name: formData.name,
+        category: categoryMap[formData.category_id],
+        condition: conditionMap[formData.condition],
+        num_suggestions: 3,
+      });
+
+      setSuggestions(response.data.suggestions);
+      setShowSuggestions(true);
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>;
+      setError(axiosError.response?.data?.error || '説明文の生成に失敗しました');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      description: suggestion,
+    }));
+    setShowSuggestions(false);
+    setSuggestions([]);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -297,6 +367,22 @@ export const CreateItemPage = () => {
             helperText="10文字以上で詳しく記載してください"
           />
 
+          {/* AI生成ボタン */}
+          <Box sx={{ mt: 1, mb: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleGenerateDescription}
+              disabled={generating || !formData.name}
+              size="small"
+            >
+              {generating ? 'AI生成中...' : 'AIで説明文を生成'}
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+              商品名を入力後、クリックするとAIが説明文の候補を提案します
+            </Typography>
+          </Box>
+
           {/* 価格 */}
           <TextField
             fullWidth
@@ -429,6 +515,49 @@ export const CreateItemPage = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* AI生成候補モーダル */}
+      <Dialog
+        open={showSuggestions}
+        onClose={() => setShowSuggestions(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoAwesomeIcon color="primary" />
+            <Typography variant="h6">AI生成された説明文候補</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            気に入った候補をクリックすると、商品説明欄に反映されます
+          </Typography>
+          <List>
+            {suggestions.map((suggestion, index) => (
+              <Box key={index}>
+                <ListItem disablePadding>
+                  <ListItemButton onClick={() => handleSelectSuggestion(suggestion)}>
+                    <ListItemText
+                      primary={`候補 ${index + 1}`}
+                      secondary={suggestion}
+                      secondaryTypographyProps={{
+                        style: { whiteSpace: 'pre-wrap' },
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+                {index < suggestions.length - 1 && <Divider />}
+              </Box>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSuggestions(false)}>
+            キャンセル
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
 import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
+import type { GenerateDescriptionRequest, GenerateDescriptionResponse } from '../types/generation';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -212,4 +213,10 @@ export const extendedItemApi = {
 
   getItemTransaction: (itemId: number) =>
     apiClient.get(`/api/items/${itemId}/transaction`),
+};
+
+// AI生成API
+export const generationApi = {
+  generateDescription: (data: GenerateDescriptionRequest) =>
+    apiClient.post<GenerateDescriptionResponse>('/api/items/description-suggestions', data),
 };
