@@ -207,3 +207,13 @@ export const generationApi = {
   convertSearchQuery: (query: string) =>
     apiClient.post<{ keywords: string[] }>('/api/search/convert', { query }),
 };
+
+// ウォレットAPI
+export const walletApi = {
+  chargeBalance: (amount: number, description?: string) =>
+    apiClient.post('/api/wallet/charge', { amount, description }),
+
+  getTransactionHistory: (limit = 20, offset = 0) =>
+    apiClient.get('/api/wallet/transactions', { params: { limit, offset } }),
+};
+

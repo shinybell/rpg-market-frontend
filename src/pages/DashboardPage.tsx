@@ -29,7 +29,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import MessageIcon from '@mui/icons-material/Message';
-import { userApi, extendedItemApi } from '../services/api';
+import AddIcon from '@mui/icons-material/Add';
+import { userApi, extendedItemApi, walletApi } from '../services/api';
 import { useImageUpload } from '../hooks/useImageUpload';
 import type { AxiosError } from 'axios';
 import { transactionStatusLabels, paymentStatusLabels, itemStatusLabels } from '../constants/transaction';
@@ -67,6 +68,13 @@ export const DashboardPage = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // チャージ用の状態
+  const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState<string>('');
+  const [chargeLoading, setChargeLoading] = useState(false);
+  const [chargeError, setChargeError] = useState<string | null>(null);
+  const [chargeSuccess, setChargeSuccess] = useState(false);
 
   // 出品商品と購入商品を取得
   useEffect(() => {
@@ -192,6 +200,52 @@ export const DashboardPage = () => {
     } finally {
       setDeleteLoading(false);
     }
+  };
+
+  // チャージダイアログを開く
+  const handleOpenChargeDialog = () => {
+    setChargeAmount('');
+    setChargeError(null);
+    setChargeSuccess(false);
+    setChargeDialogOpen(true);
+  };
+
+  // チャージ実行
+  const handleCharge = async () => {
+    const amount = parseInt(chargeAmount);
+
+    if (!amount || amount <= 0) {
+      setChargeError('有効な金額を入力してください');
+      return;
+    }
+
+    if (amount > 100000) {
+      setChargeError('チャージ金額は100,000円以下にしてください');
+      return;
+    }
+
+    setChargeLoading(true);
+    setChargeError(null);
+
+    try {
+      await walletApi.chargeBalance(amount, 'ダッシュボードからのチャージ');
+      setChargeSuccess(true);
+
+      // 成功後、ウォレット情報を再取得するためにページをリロード
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      const error = err as AxiosError<{ error: string }>;
+      setChargeError(error.response?.data?.error || 'チャージに失敗しました');
+    } finally {
+      setChargeLoading(false);
+    }
+  };
+
+  // プリセット金額を設定
+  const handlePresetAmount = (amount: number) => {
+    setChargeAmount(amount.toString());
   };
 
   if (!profile) {
@@ -336,6 +390,22 @@ export const DashboardPage = () => {
                   {formatCurrency(profile.wallet?.balance || 0)}
                 </Typography>
               </Box>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenChargeDialog}
+                sx={{
+                  mt: 2,
+                  background: 'linear-gradient(135deg, #d4af37 0%, #f4e5a1 100%)',
+                  color: '#5a4a2a',
+                  fontWeight: 'bold',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #f4e5a1 0%, #d4af37 100%)',
+                  },
+                }}
+              >
+                チャージ
+              </Button>
             </Box>
 
             {/* MP */}
@@ -749,6 +819,68 @@ export const DashboardPage = () => {
             disabled={deleteLoading || deleteConfirmText !== 'DELETE'}
           >
             {deleteLoading ? '削除中...' : '削除'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* チャージダイアログ */}
+      <Dialog open={chargeDialogOpen} onClose={() => setChargeDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>💰 ゴールドをチャージ</DialogTitle>
+        <DialogContent>
+          {chargeError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {chargeError}
+            </Alert>
+          )}
+          {chargeSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              チャージが完了しました！
+            </Alert>
+          )}
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            チャージする金額を入力してください（上限: 100,000円）
+          </Typography>
+
+          {/* プリセット金額ボタン */}
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+            {[1000, 3000, 5000, 10000, 30000, 50000].map((amount) => (
+              <Button
+                key={amount}
+                variant="outlined"
+                size="small"
+                onClick={() => handlePresetAmount(amount)}
+                sx={{ minWidth: '80px' }}
+              >
+                {formatCurrency(amount)}
+              </Button>
+            ))}
+          </Box>
+
+          <TextField
+            fullWidth
+            label="チャージ金額"
+            type="number"
+            value={chargeAmount}
+            onChange={(e) => setChargeAmount(e.target.value)}
+            margin="normal"
+            required
+            InputProps={{
+              inputProps: { min: 1, max: 100000 },
+            }}
+            helperText="1円〜100,000円の範囲で入力してください"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setChargeDialogOpen(false)} disabled={chargeLoading}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleCharge}
+            variant="contained"
+            disabled={chargeLoading || !chargeAmount || chargeSuccess}
+          >
+            {chargeLoading ? 'チャージ中...' : 'チャージ'}
           </Button>
         </DialogActions>
       </Dialog>
