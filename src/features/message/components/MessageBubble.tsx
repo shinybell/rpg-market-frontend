@@ -52,7 +52,7 @@ export const MessageBubble = ({ message, isOwnMessage }: MessageBubbleProps) => 
         <Box
           sx={{
             backgroundColor: isOwnMessage ? 'primary.main' : 'grey.200',
-            color: isOwnMessage ? 'white' : 'text.primary',
+            color: isOwnMessage ? 'white' : '#1a1410',
             borderRadius: 2,
             px: 2,
             py: 1.5,
