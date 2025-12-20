@@ -5,10 +5,12 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { CircularProgress, Box } from '@mui/material';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { Header } from './components/Header';
+import { ShopkeeperNavigator } from './components/ShopkeeperNavigator';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterProfilePage } from './pages/RegisterProfilePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ItemListPage } from './pages/ItemListPage';
+import { SearchResultsPage } from './pages/SearchResultsPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
 import { CreateItemPage } from './pages/CreateItemPage';
 import { EditItemPage } from './pages/EditItemPage';
@@ -62,6 +64,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {showHeader && <Header />}
+      {showHeader && (
+        <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2, pt: 3 }}>
+          <ShopkeeperNavigator />
+        </Box>
+      )}
       {children}
     </>
   );
@@ -93,6 +100,7 @@ function App() {
                 }
               />
               <Route path="/items" element={<ItemListPage />} />
+              <Route path="/items/search" element={<SearchResultsPage />} />
               <Route
                 path="/items/new"
                 element={

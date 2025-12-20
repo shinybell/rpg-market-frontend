@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
-import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
+import type { CreateItemRequest, UpdateItemRequest } from '../types/item';
+import type { GenerateDescriptionRequest, GenerateDescriptionResponse, AppraiseItemRequest, AppraiseItemResponse } from '../types/generation';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -104,33 +105,16 @@ export const itemApi = {
   searchItems: (keyword: string, limit = 20, offset = 0) =>
     apiClient.get('/api/items/search', { params: { q: keyword, limit, offset } }),
 
+  // 複数キーワード検索
+  searchItemsByKeywords: (keywords: string[], limit = 20, offset = 0) =>
+    apiClient.post('/api/items/search/keywords', { keywords }, { params: { limit, offset } }),
+
   // アイテム作成（認証必須）
-  createItem: (data: {
-    category_id: number;
-    name: string;
-    description: string;
-    price: number;
-    stock: number;
-    condition: ItemCondition;
-    shipping_payer: ShippingPayer;
-    shipping_days: ShippingDays;
-    status: ItemStatus;
-    images?: Array<{ image_url: string; display_order: number }>;
-  }) =>
+  createItem: (data: CreateItemRequest) =>
     apiClient.post('/api/items', data),
 
   // アイテム更新（認証必須）
-  updateItem: (id: number, data: {
-    name?: string;
-    description?: string;
-    price?: number;
-    stock?: number;
-    condition?: ItemCondition;
-    shipping_payer?: ShippingPayer;
-    shipping_days?: ShippingDays;
-    status?: ItemStatus;
-    images?: Array<{ image_url: string; display_order: number }>;
-  }) =>
+  updateItem: (id: number, data: UpdateItemRequest) =>
     apiClient.put(`/api/items/${id}`, data),
 
   // アイテム削除（認証必須）
@@ -213,3 +197,23 @@ export const extendedItemApi = {
   getItemTransaction: (itemId: number) =>
     apiClient.get(`/api/items/${itemId}/transaction`),
 };
+
+// AI生成API
+export const generationApi = {
+  generateDescription: (data: GenerateDescriptionRequest) =>
+    apiClient.post<GenerateDescriptionResponse>('/api/items/description-suggestions', data),
+  appraiseItem: (data: AppraiseItemRequest) =>
+    apiClient.post<AppraiseItemResponse>('/api/items/appraise', data),
+  convertSearchQuery: (query: string) =>
+    apiClient.post<{ keywords: string[] }>('/api/search/convert', { query }),
+};
+
+// ウォレットAPI
+export const walletApi = {
+  chargeBalance: (amount: number, description?: string) =>
+    apiClient.post('/api/wallet/charge', { amount, description }),
+
+  getTransactionHistory: (limit = 20, offset = 0) =>
+    apiClient.get('/api/wallet/transactions', { params: { limit, offset } }),
+};
+

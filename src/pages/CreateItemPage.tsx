@@ -17,11 +17,20 @@ import {
   Card,
   CardMedia,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { itemApi } from '../services/api';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { itemApi, generationApi } from '../services/api';
 import { useImageUpload } from '../hooks/useImageUpload';
 import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
 import type { AxiosError } from 'axios';
@@ -34,6 +43,16 @@ export const CreateItemPage = () => {
   const { uploadImages } = useImageUpload();
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+
+  // AI生成用のstate
+  const [generating, setGenerating] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // RPG鑑定用のstate
+  const [appraising, setAppraising] = useState(false);
+  const [rpgName, setRpgName] = useState('');
+  const [rpgDescription, setRpgDescription] = useState('');
 
   const [formData, setFormData] = useState({
     category_id: 1,
@@ -102,6 +121,107 @@ export const CreateItemPage = () => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // AI生成ハンドラー
+  const handleGenerateDescription = async () => {
+    if (!formData.name) {
+      setError('商品名を入力してからAI生成をお試しください');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setError(null);
+
+      // カテゴリ名を取得
+      const categoryMap: Record<number, string> = {
+        1: '武器',
+        2: '防具',
+        3: 'アクセサリー',
+        4: '消耗品',
+        5: '素材',
+      };
+
+      // 状態名を取得
+      const conditionMap: Record<ItemCondition, string> = {
+        new: '新品',
+        like_new: '未使用に近い',
+        very_good: '非常に良い',
+        good: '良い',
+        acceptable: '可',
+      };
+
+      const response = await generationApi.generateDescription({
+        item_name: formData.name,
+        category: categoryMap[formData.category_id],
+        condition: conditionMap[formData.condition],
+        num_suggestions: 3,
+      });
+
+      setSuggestions(response.data.suggestions);
+      setShowSuggestions(true);
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>;
+      setError(axiosError.response?.data?.error || '説明文の生成に失敗しました');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      description: suggestion,
+    }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // RPG鑑定ハンドラー
+  const handleAppraiseItem = async () => {
+    if (!formData.name) {
+      setError('商品名を入力してからRPG鑑定をお試しください');
+      return;
+    }
+
+    try {
+      setAppraising(true);
+      setError(null);
+
+      // カテゴリ名を取得
+      const categoryMap: Record<number, string> = {
+        1: '武器',
+        2: '防具',
+        3: 'アクセサリー',
+        4: '消耗品',
+        5: '素材',
+      };
+
+      // 状態名を取得
+      const conditionMap: Record<ItemCondition, string> = {
+        new: '新品',
+        like_new: '未使用に近い',
+        very_good: '非常に良い',
+        good: '良い',
+        acceptable: '可',
+      };
+
+      const response = await generationApi.appraiseItem({
+        item_name: formData.name,
+        description: formData.description || undefined,
+        category: categoryMap[formData.category_id],
+        condition: conditionMap[formData.condition],
+      });
+
+      setRpgName(response.data.rpg_name);
+      setRpgDescription(response.data.rpg_description);
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>;
+      setError(axiosError.response?.data?.error || 'RPG鑑定に失敗しました');
+    } finally {
+      setAppraising(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -127,19 +247,29 @@ export const CreateItemPage = () => {
       return;
     }
 
+    // 画像の必須チェック
+    if (selectedImages.length === 0) {
+      setError('商品画像を1枚以上アップロードしてください');
+      return;
+    }
+
+    // RPG鑑定の必須チェック
+    if (!rpgName || !rpgDescription) {
+      setError('🔍 ギルドへの鑑定依頼が必要です。「ギルドに鑑定を依頼する」ボタンをクリックしてください');
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // 画像がある場合はアップロード
+      // 画像をアップロード
       let imageUrls: string[] = [];
-      if (selectedImages.length > 0) {
-        try {
-          imageUrls = await uploadImages(selectedImages);
-        } catch {
-          setError('画像のアップロードに失敗しました');
-          setLoading(false);
-          return;
-        }
+      try {
+        imageUrls = await uploadImages(selectedImages);
+      } catch {
+        setError('画像のアップロードに失敗しました');
+        setLoading(false);
+        return;
       }
 
       const images = imageUrls.map((url, index) => ({
@@ -158,6 +288,8 @@ export const CreateItemPage = () => {
         shipping_days: formData.shipping_days,
         status: formData.status,
         images,
+        rpg_name: rpgName,
+        rpg_description: rpgDescription,
       });
 
       setSuccess(true);
@@ -178,9 +310,12 @@ export const CreateItemPage = () => {
         一覧に戻る
       </Button>
 
-      <Paper sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          アイテムを出品する
+      <Paper sx={{ p: 4, background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)', border: '2px solid #8b7355' }}>
+        <Typography variant="h4" gutterBottom sx={{ color: '#8b7355', fontFamily: 'MedievalSharp, serif' }}>
+          ⚔️ ギルドへ鑑定依頼
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 3, color: '#5d4037' }}>
+          あなたの品をギルドの鑑定士が調べ、冒険者たちに紹介します
         </Typography>
 
         {error && (
@@ -191,15 +326,15 @@ export const CreateItemPage = () => {
 
         {success && (
           <Alert severity="success" sx={{ mb: 3 }}>
-            アイテムを出品しました！一覧ページに移動します...
+            ✨ 鑑定完了！あなたの品が冒険者たちに届けられます...
           </Alert>
         )}
 
         <Box component="form" onSubmit={handleSubmit}>
           {/* 画像アップロード */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              商品画像
+            <Typography variant="subtitle1" gutterBottom sx={{ color: '#1a1410' }}>
+              📸 品の外観 <Typography component="span" color="error">*必須(1枚以上)</Typography>
             </Typography>
 
             {imagePreviews.length > 0 ? (
@@ -265,7 +400,7 @@ export const CreateItemPage = () => {
                     onChange={handleImageUpload}
                   />
                 </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                <Typography variant="caption" sx={{ mt: 1, display: 'block', color: '#5d4037' }}>
                   ※ 画像サイズは5MB以下、JPG/PNG形式、最大5枚まで
                 </Typography>
               </Box>
@@ -297,6 +432,22 @@ export const CreateItemPage = () => {
             helperText="10文字以上で詳しく記載してください"
           />
 
+          {/* AI生成ボタン */}
+          <Box sx={{ mt: 1, mb: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleGenerateDescription}
+              disabled={generating || !formData.name}
+              size="small"
+            >
+              {generating ? 'AI生成中...' : 'AIで説明文を生成'}
+            </Button>
+            <Typography variant="caption" sx={{ ml: 2, color: '#5d4037' }}>
+              商品名を入力後、クリックするとAIが説明文の候補を提案します
+            </Typography>
+          </Box>
+
           {/* 価格 */}
           <TextField
             fullWidth
@@ -307,15 +458,28 @@ export const CreateItemPage = () => {
             onChange={handleChange('price')}
             margin="normal"
             slotProps={{
-                input: {
+              input: {
                 startAdornment: <InputAdornment position="start">¥</InputAdornment>,
-                },
-                htmlInput: {
+              },
+              htmlInput: {
                 min: 0,
                 step: 1,
-                },
+              },
             }}
             helperText="0以上の整数"
+            sx={{
+              '& input[type=number]': {
+                MozAppearance: 'textfield',
+              },
+              '& input[type=number]::-webkit-outer-spin-button': {
+                WebkitAppearance: 'none',
+                margin: 0,
+              },
+              '& input[type=number]::-webkit-inner-spin-button': {
+                WebkitAppearance: 'none',
+                margin: 0,
+              },
+            }}
           />
 
           {/* 在庫数 */}
@@ -329,10 +493,23 @@ export const CreateItemPage = () => {
             margin="normal"
             helperText="1以上の数値"
             slotProps={{
-                htmlInput: {
-                    min: 1,
-                    step: 1,
-                },
+              htmlInput: {
+                min: 1,
+                step: 1,
+              },
+            }}
+            sx={{
+              '& input[type=number]': {
+                MozAppearance: 'textfield',
+              },
+              '& input[type=number]::-webkit-outer-spin-button': {
+                WebkitAppearance: 'none',
+                margin: 0,
+              },
+              '& input[type=number]::-webkit-inner-spin-button': {
+                WebkitAppearance: 'none',
+                margin: 0,
+              },
             }}
           />
 
@@ -343,6 +520,27 @@ export const CreateItemPage = () => {
               value={formData.condition}
               onChange={handleChange('condition')}
               label="商品の状態"
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+                    border: '2px solid #8b7355',
+                    '& .MuiMenuItem-root': {
+                      color: '#1a1410',
+                      fontFamily: 'Cinzel, serif',
+                      '&:hover': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.2)',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.3)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(212, 175, 55, 0.4)',
+                        },
+                      },
+                    },
+                  },
+                },
+              }}
             >
               <MenuItem value="new">新品</MenuItem>
               <MenuItem value="like_new">未使用に近い</MenuItem>
@@ -359,6 +557,23 @@ export const CreateItemPage = () => {
               value={formData.shipping_payer}
               onChange={handleChange('shipping_payer')}
               label="送料負担"
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+                    border: '2px solid #8b7355',
+                    '& .MuiMenuItem-root': {
+                      color: '#1a1410',
+                      fontFamily: 'Cinzel, serif',
+                      '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.2)' },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.3)',
+                        '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.4)' },
+                      },
+                    },
+                  },
+                },
+              }}
             >
               <MenuItem value="seller">出品者負担</MenuItem>
               <MenuItem value="buyer">購入者負担</MenuItem>
@@ -372,6 +587,23 @@ export const CreateItemPage = () => {
               value={formData.shipping_days}
               onChange={handleChange('shipping_days')}
               label="発送までの日数"
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+                    border: '2px solid #8b7355',
+                    '& .MuiMenuItem-root': {
+                      color: '#1a1410',
+                      fontFamily: 'Cinzel, serif',
+                      '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.2)' },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.3)',
+                        '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.4)' },
+                      },
+                    },
+                  },
+                },
+              }}
             >
               <MenuItem value="1-2">1〜2日で発送</MenuItem>
               <MenuItem value="2-3">2〜3日で発送</MenuItem>
@@ -386,6 +618,23 @@ export const CreateItemPage = () => {
               value={formData.category_id}
               onChange={handleChange('category_id')}
               label="カテゴリ"
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+                    border: '2px solid #8b7355',
+                    '& .MuiMenuItem-root': {
+                      color: '#1a1410',
+                      fontFamily: 'Cinzel, serif',
+                      '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.2)' },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.3)',
+                        '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.4)' },
+                      },
+                    },
+                  },
+                },
+              }}
             >
               <MenuItem value={1}>武器</MenuItem>
               <MenuItem value={2}>防具</MenuItem>
@@ -402,11 +651,61 @@ export const CreateItemPage = () => {
               value={formData.status}
               onChange={handleChange('status')}
               label="公開状態"
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+                    border: '2px solid #8b7355',
+                    '& .MuiMenuItem-root': {
+                      color: '#1a1410',
+                      fontFamily: 'Cinzel, serif',
+                      '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.2)' },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.3)',
+                        '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.4)' },
+                      },
+                    },
+                  },
+                },
+              }}
             >
               <MenuItem value="draft">下書き</MenuItem>
               <MenuItem value="on_sale">販売中</MenuItem>
             </Select>
           </FormControl>
+
+          {/* RPG鑑定ボタン */}
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom sx={{ color: '#1a1410' }}>
+              RPG鑑定 <Typography component="span" color="error">*必須</Typography>
+            </Typography>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleAppraiseItem}
+              disabled={appraising || !formData.name}
+              fullWidth
+            >
+              {appraising ? '🔮 鑑定中...' : '🔍 ギルドに鑑定を依頼する'}
+            </Button>
+            <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center', color: '#5d4037' }}>
+              ギルドの鑑定士が、あなたの品をRPG世界の伝説の装備として紹介します
+            </Typography>
+            {rpgName && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(74, 124, 44, 0.15)', borderRadius: 1, border: '2px solid', borderColor: 'secondary.main' }}>
+                <Typography variant="subtitle2" color="secondary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  ✨ 鑑定結果（この内容で冒険者に届けられます）
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#1a1410' }}>
+                  <strong>🎭 伝説の名:</strong> {rpgName}
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1, color: '#1a1410' }}>
+                  <strong>📜 伝承:</strong> {rpgDescription}
+                </Typography>
+              </Box>
+            )}
+          </Box>
 
           {/* 送信ボタン */}
           <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
@@ -422,13 +721,107 @@ export const CreateItemPage = () => {
               type="submit"
               variant="contained"
               fullWidth
-              disabled={loading}
+              disabled={loading || selectedImages.length === 0 || !rpgName || !rpgDescription}
             >
-              {loading ? <CircularProgress size={24} /> : '出品する'}
+              {loading ? <CircularProgress size={24} /> : '⚔️ 冒険者たちに届ける'}
             </Button>
           </Box>
         </Box>
       </Paper>
+
+      {/* AI生成候補モーダル */}
+      <Dialog
+        open={showSuggestions}
+        onClose={() => setShowSuggestions(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+            border: '3px solid #8b7355',
+            boxShadow: 'inset 0 0 30px rgba(139, 115, 85, 0.15), 0 8px 24px rgba(0, 0, 0, 0.4)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ borderBottom: '2px solid #8b7355', pb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoAwesomeIcon sx={{ color: '#d4af37', fontSize: '2rem' }} />
+            <Typography
+              variant="h6"
+              sx={{
+                fontFamily: 'Cinzel, serif',
+                color: '#8b7355',
+                fontWeight: 700,
+              }}
+            >
+              ✨ AI生成された説明文候補
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 2,
+              color: '#5d4037',
+              fontFamily: 'Cinzel, serif',
+            }}
+          >
+            気に入った候補をクリックすると、商品説明欄に反映されます
+          </Typography>
+          <List>
+            {suggestions.map((suggestion, index) => (
+              <Box key={index}>
+                <ListItem
+                  disablePadding
+                  sx={{
+                    border: '2px solid #8b7355',
+                    borderRadius: '4px',
+                    mb: 1,
+                    '&:hover': {
+                      borderColor: '#d4af37',
+                      boxShadow: '0 2px 8px rgba(212, 175, 55, 0.3)',
+                    },
+                  }}
+                >
+                  <ListItemButton
+                    onClick={() => handleSelectSuggestion(suggestion)}
+                    sx={{
+                      '&:hover': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.15)',
+                      },
+                    }}
+                  >
+                    <ListItemText
+                      primary={`候補 ${index + 1}`}
+                      secondary={suggestion}
+                      primaryTypographyProps={{
+                        sx: {
+                          fontFamily: 'Cinzel, serif',
+                          fontWeight: 700,
+                          color: '#8b7355',
+                        },
+                      }}
+                      secondaryTypographyProps={{
+                        style: { whiteSpace: 'pre-wrap' },
+                        sx: {
+                          color: '#1a1410',
+                          fontFamily: 'Cinzel, serif',
+                        },
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              </Box>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '2px solid #8b7355', pt: 2 }}>
+          <Button onClick={() => setShowSuggestions(false)}>
+            キャンセル
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
