@@ -298,17 +298,29 @@ export const ItemDetailPage = () => {
 
         {/* アイテム情報 */}
         <Grid size={{ xs: 12, md: 6 }}>
-          <Typography variant="h4" gutterBottom>
-            {item.name}
-          </Typography>
+          {item.rpg_name ? (
+            <>
+              <Typography variant="h4" gutterBottom color="secondary">
+                {item.rpg_name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                （元の商品名: {item.name}）
+              </Typography>
+            </>
+          ) : (
+            <Typography variant="h4" gutterBottom>
+              {item.name}
+            </Typography>
+          )}
 
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <Chip label={conditionLabels[item.condition]} color="primary" />
             <Chip label={item.status === 'on_sale' ? '販売中' : '売り切れ'} />
+            {item.rpg_name && <Chip label="RPG風" color="secondary" />}
           </Box>
 
           <Typography variant="h3" color="primary" fontWeight="bold" gutterBottom>
-            ¥{item.price.toLocaleString()}
+            {item.rpg_name ? `${item.price.toLocaleString()}ゴールド` : `¥${item.price.toLocaleString()}`}
           </Typography>
 
           <Divider sx={{ my: 2 }} />
@@ -402,12 +414,32 @@ export const ItemDetailPage = () => {
         {/* 商品説明 */}
         <Grid size={{ xs: 12 }}>
           <Paper variant="outlined" sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              商品の説明
-            </Typography>
-            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-              {item.description}
-            </Typography>
+            {item.rpg_description ? (
+              <>
+                <Typography variant="h6" gutterBottom color="secondary">
+                  RPG風説明
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mb: 3 }}>
+                  {item.rpg_description}
+                </Typography>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  元の商品説明
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {item.description}
+                </Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="h6" gutterBottom>
+                  商品の説明
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {item.description}
+                </Typography>
+              </>
+            )}
           </Paper>
         </Grid>
 

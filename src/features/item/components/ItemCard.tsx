@@ -37,11 +37,11 @@ export const ItemCard = ({ item }: ItemCardProps) => {
       />
       <CardContent>
         <Typography variant="h6" component="div" noWrap>
-          {item.name}
+          {item.rpg_name || item.name}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1 }}>
           <Typography variant="h5" color="primary" fontWeight="bold">
-            ¥{item.price.toLocaleString()}
+            {item.rpg_name ? `${item.price.toLocaleString()}ゴールド` : `¥${item.price.toLocaleString()}`}
           </Typography>
           <Chip
             label={conditionLabels[item.condition]}

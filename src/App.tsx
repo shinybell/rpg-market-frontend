@@ -9,6 +9,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterProfilePage } from './pages/RegisterProfilePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ItemListPage } from './pages/ItemListPage';
+import { SearchResultsPage } from './pages/SearchResultsPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
 import { CreateItemPage } from './pages/CreateItemPage';
 import { EditItemPage } from './pages/EditItemPage';
@@ -93,6 +94,7 @@ function App() {
                 }
               />
               <Route path="/items" element={<ItemListPage />} />
+              <Route path="/items/search" element={<SearchResultsPage />} />
               <Route
                 path="/items/new"
                 element={

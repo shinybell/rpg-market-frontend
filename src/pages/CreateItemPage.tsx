@@ -17,11 +17,21 @@ import {
   Card,
   CardMedia,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton,
+  Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { itemApi } from '../services/api';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { itemApi, generationApi } from '../services/api';
 import { useImageUpload } from '../hooks/useImageUpload';
 import type { ItemCondition, ShippingPayer, ShippingDays, ItemStatus } from '../types/item';
 import type { AxiosError } from 'axios';
@@ -34,6 +44,16 @@ export const CreateItemPage = () => {
   const { uploadImages } = useImageUpload();
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+
+  // AI生成用のstate
+  const [generating, setGenerating] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // RPG鑑定用のstate
+  const [appraising, setAppraising] = useState(false);
+  const [rpgName, setRpgName] = useState('');
+  const [rpgDescription, setRpgDescription] = useState('');
 
   const [formData, setFormData] = useState({
     category_id: 1,
@@ -102,6 +122,107 @@ export const CreateItemPage = () => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // AI生成ハンドラー
+  const handleGenerateDescription = async () => {
+    if (!formData.name) {
+      setError('商品名を入力してからAI生成をお試しください');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setError(null);
+
+      // カテゴリ名を取得
+      const categoryMap: Record<number, string> = {
+        1: '武器',
+        2: '防具',
+        3: 'アクセサリー',
+        4: '消耗品',
+        5: '素材',
+      };
+
+      // 状態名を取得
+      const conditionMap: Record<ItemCondition, string> = {
+        new: '新品',
+        like_new: '未使用に近い',
+        very_good: '非常に良い',
+        good: '良い',
+        acceptable: '可',
+      };
+
+      const response = await generationApi.generateDescription({
+        item_name: formData.name,
+        category: categoryMap[formData.category_id],
+        condition: conditionMap[formData.condition],
+        num_suggestions: 3,
+      });
+
+      setSuggestions(response.data.suggestions);
+      setShowSuggestions(true);
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>;
+      setError(axiosError.response?.data?.error || '説明文の生成に失敗しました');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      description: suggestion,
+    }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // RPG鑑定ハンドラー
+  const handleAppraiseItem = async () => {
+    if (!formData.name) {
+      setError('商品名を入力してからRPG鑑定をお試しください');
+      return;
+    }
+
+    try {
+      setAppraising(true);
+      setError(null);
+
+      // カテゴリ名を取得
+      const categoryMap: Record<number, string> = {
+        1: '武器',
+        2: '防具',
+        3: 'アクセサリー',
+        4: '消耗品',
+        5: '素材',
+      };
+
+      // 状態名を取得
+      const conditionMap: Record<ItemCondition, string> = {
+        new: '新品',
+        like_new: '未使用に近い',
+        very_good: '非常に良い',
+        good: '良い',
+        acceptable: '可',
+      };
+
+      const response = await generationApi.appraiseItem({
+        item_name: formData.name,
+        description: formData.description || undefined,
+        category: categoryMap[formData.category_id],
+        condition: conditionMap[formData.condition],
+      });
+
+      setRpgName(response.data.rpg_name);
+      setRpgDescription(response.data.rpg_description);
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>;
+      setError(axiosError.response?.data?.error || 'RPG鑑定に失敗しました');
+    } finally {
+      setAppraising(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -127,19 +248,29 @@ export const CreateItemPage = () => {
       return;
     }
 
+    // 画像の必須チェック
+    if (selectedImages.length === 0) {
+      setError('商品画像を1枚以上アップロードしてください');
+      return;
+    }
+
+    // RPG鑑定の必須チェック
+    if (!rpgName || !rpgDescription) {
+      setError('出品前に「鑑定を依頼する」ボタンでRPG風に変換してください');
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // 画像がある場合はアップロード
+      // 画像をアップロード
       let imageUrls: string[] = [];
-      if (selectedImages.length > 0) {
-        try {
-          imageUrls = await uploadImages(selectedImages);
-        } catch {
-          setError('画像のアップロードに失敗しました');
-          setLoading(false);
-          return;
-        }
+      try {
+        imageUrls = await uploadImages(selectedImages);
+      } catch {
+        setError('画像のアップロードに失敗しました');
+        setLoading(false);
+        return;
       }
 
       const images = imageUrls.map((url, index) => ({
@@ -158,6 +289,8 @@ export const CreateItemPage = () => {
         shipping_days: formData.shipping_days,
         status: formData.status,
         images,
+        rpg_name: rpgName,
+        rpg_description: rpgDescription,
       });
 
       setSuccess(true);
@@ -199,7 +332,7 @@ export const CreateItemPage = () => {
           {/* 画像アップロード */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" gutterBottom>
-              商品画像
+              商品画像 <Typography component="span" color="error">*必須（1枚以上）</Typography>
             </Typography>
 
             {imagePreviews.length > 0 ? (
@@ -296,6 +429,22 @@ export const CreateItemPage = () => {
             margin="normal"
             helperText="10文字以上で詳しく記載してください"
           />
+
+          {/* AI生成ボタン */}
+          <Box sx={{ mt: 1, mb: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleGenerateDescription}
+              disabled={generating || !formData.name}
+              size="small"
+            >
+              {generating ? 'AI生成中...' : 'AIで説明文を生成'}
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+              商品名を入力後、クリックするとAIが説明文の候補を提案します
+            </Typography>
+          </Box>
 
           {/* 価格 */}
           <TextField
@@ -408,6 +557,39 @@ export const CreateItemPage = () => {
             </Select>
           </FormControl>
 
+          {/* RPG鑑定ボタン */}
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              RPG鑑定 <Typography component="span" color="error">*必須</Typography>
+            </Typography>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleAppraiseItem}
+              disabled={appraising || !formData.name}
+              fullWidth
+            >
+              {appraising ? 'RPG鑑定中...' : '鑑定を依頼する（RPG風に変換）'}
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+              商品名と説明を入力後、必ずクリックしてRPG風の名前と説明文に変換してください
+            </Typography>
+            {rpgName && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                <Typography variant="subtitle2" color="secondary" gutterBottom>
+                  鑑定結果（この内容で出品されます）
+                </Typography>
+                <Typography variant="body2">
+                  <strong>RPG名:</strong> {rpgName}
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>RPG説明:</strong> {rpgDescription}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
           {/* 送信ボタン */}
           <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
             <Button
@@ -422,13 +604,56 @@ export const CreateItemPage = () => {
               type="submit"
               variant="contained"
               fullWidth
-              disabled={loading}
+              disabled={loading || selectedImages.length === 0 || !rpgName || !rpgDescription}
             >
               {loading ? <CircularProgress size={24} /> : '出品する'}
             </Button>
           </Box>
         </Box>
       </Paper>
+
+      {/* AI生成候補モーダル */}
+      <Dialog
+        open={showSuggestions}
+        onClose={() => setShowSuggestions(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoAwesomeIcon color="primary" />
+            <Typography variant="h6">AI生成された説明文候補</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            気に入った候補をクリックすると、商品説明欄に反映されます
+          </Typography>
+          <List>
+            {suggestions.map((suggestion, index) => (
+              <Box key={index}>
+                <ListItem disablePadding>
+                  <ListItemButton onClick={() => handleSelectSuggestion(suggestion)}>
+                    <ListItemText
+                      primary={`候補 ${index + 1}`}
+                      secondary={suggestion}
+                      secondaryTypographyProps={{
+                        style: { whiteSpace: 'pre-wrap' },
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+                {index < suggestions.length - 1 && <Divider />}
+              </Box>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSuggestions(false)}>
+            キャンセル
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
