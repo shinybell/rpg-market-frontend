@@ -42,6 +42,8 @@ export interface Item {
   comments_count?: number;
   view_count: number;
   images?: ItemImage[];
+  rpg_name?: string;
+  rpg_description?: string;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +65,8 @@ export interface CreateItemRequest {
     image_url: string;
     display_order: number;
   }>;
+  rpg_name?: string;
+  rpg_description?: string;
 }
 
 export interface UpdateItemRequest {
@@ -76,4 +80,10 @@ export interface UpdateItemRequest {
   shipping_days?: ShippingDays;
   prefecture_id?: number;
   status?: ItemStatus;
+  images?: Array<{
+    image_url: string;
+    display_order: number;
+  }>;
+  rpg_name?: string;
+  rpg_description?: string;
 }

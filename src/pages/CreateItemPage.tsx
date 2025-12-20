@@ -50,6 +50,11 @@ export const CreateItemPage = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // RPG鑑定用のstate
+  const [appraising, setAppraising] = useState(false);
+  const [rpgName, setRpgName] = useState('');
+  const [rpgDescription, setRpgDescription] = useState('');
+
   const [formData, setFormData] = useState({
     category_id: 1,
     name: '',
@@ -172,6 +177,52 @@ export const CreateItemPage = () => {
     setSuggestions([]);
   };
 
+  // RPG鑑定ハンドラー
+  const handleAppraiseItem = async () => {
+    if (!formData.name) {
+      setError('商品名を入力してからRPG鑑定をお試しください');
+      return;
+    }
+
+    try {
+      setAppraising(true);
+      setError(null);
+
+      // カテゴリ名を取得
+      const categoryMap: Record<number, string> = {
+        1: '武器',
+        2: '防具',
+        3: 'アクセサリー',
+        4: '消耗品',
+        5: '素材',
+      };
+
+      // 状態名を取得
+      const conditionMap: Record<ItemCondition, string> = {
+        new: '新品',
+        like_new: '未使用に近い',
+        very_good: '非常に良い',
+        good: '良い',
+        acceptable: '可',
+      };
+
+      const response = await generationApi.appraiseItem({
+        item_name: formData.name,
+        description: formData.description || undefined,
+        category: categoryMap[formData.category_id],
+        condition: conditionMap[formData.condition],
+      });
+
+      setRpgName(response.data.rpg_name);
+      setRpgDescription(response.data.rpg_description);
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>;
+      setError(axiosError.response?.data?.error || 'RPG鑑定に失敗しました');
+    } finally {
+      setAppraising(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -228,6 +279,8 @@ export const CreateItemPage = () => {
         shipping_days: formData.shipping_days,
         status: formData.status,
         images,
+        rpg_name: rpgName || undefined,
+        rpg_description: rpgDescription || undefined,
       });
 
       setSuccess(true);
@@ -493,6 +546,36 @@ export const CreateItemPage = () => {
               <MenuItem value="on_sale">販売中</MenuItem>
             </Select>
           </FormControl>
+
+          {/* RPG鑑定ボタン */}
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleAppraiseItem}
+              disabled={appraising || !formData.name}
+              fullWidth
+            >
+              {appraising ? 'RPG鑑定中...' : '鑑定を依頼する（RPG風に変換）'}
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+              商品名と説明を入力後、クリックするとRPG風の名前と説明文に変換します
+            </Typography>
+            {rpgName && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                <Typography variant="subtitle2" color="secondary" gutterBottom>
+                  鑑定結果（この内容で出品されます）
+                </Typography>
+                <Typography variant="body2">
+                  <strong>RPG名:</strong> {rpgName}
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>RPG説明:</strong> {rpgDescription}
+                </Typography>
+              </Box>
+            )}
+          </Box>
 
           {/* 送信ボタン */}
           <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>

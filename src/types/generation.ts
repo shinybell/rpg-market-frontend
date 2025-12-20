@@ -10,3 +10,15 @@ export interface GenerateDescriptionRequest {
 export interface GenerateDescriptionResponse {
   suggestions: string[];
 }
+
+export interface AppraiseItemRequest {
+  item_name: string;
+  description?: string;
+  category?: string;
+  condition?: string;
+}
+
+export interface AppraiseItemResponse {
+  rpg_name: string;
+  rpg_description: string;
+}
