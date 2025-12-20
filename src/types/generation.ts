@@ -22,3 +22,11 @@ export interface AppraiseItemResponse {
   rpg_name: string;
   rpg_description: string;
 }
+
+export interface ConvertSearchQueryRequest {
+  query: string;
+}
+
+export interface ConvertSearchQueryResponse {
+  keywords: string[];
+}

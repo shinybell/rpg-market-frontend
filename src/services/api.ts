@@ -105,6 +105,10 @@ export const itemApi = {
   searchItems: (keyword: string, limit = 20, offset = 0) =>
     apiClient.get('/api/items/search', { params: { q: keyword, limit, offset } }),
 
+  // 複数キーワード検索
+  searchItemsByKeywords: (keywords: string[], limit = 20, offset = 0) =>
+    apiClient.post('/api/items/search/keywords', { keywords }, { params: { limit, offset } }),
+
   // アイテム作成（認証必須）
   createItem: (data: CreateItemRequest) =>
     apiClient.post('/api/items', data),
@@ -200,4 +204,6 @@ export const generationApi = {
     apiClient.post<GenerateDescriptionResponse>('/api/items/description-suggestions', data),
   appraiseItem: (data: AppraiseItemRequest) =>
     apiClient.post<AppraiseItemResponse>('/api/items/appraise', data),
+  convertSearchQuery: (query: string) =>
+    apiClient.post<{ keywords: string[] }>('/api/search/convert', { query }),
 };
