@@ -24,8 +24,6 @@ import {
   CardMedia,
   CardActions,
 } from '@mui/material';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import StarsIcon from '@mui/icons-material/Stars';
 import EditIcon from '@mui/icons-material/Edit';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -34,8 +32,10 @@ import MessageIcon from '@mui/icons-material/Message';
 import { userApi, extendedItemApi } from '../services/api';
 import { useImageUpload } from '../hooks/useImageUpload';
 import type { AxiosError } from 'axios';
+import { transactionStatusLabels, paymentStatusLabels, itemStatusLabels } from '../constants/transaction';
 import type { Item } from '../types/item';
 import type { Transaction } from '../types/message';
+import { formatCurrency } from '../utils/currency';
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
@@ -204,14 +204,17 @@ export const DashboardPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        ダッシュボード
+      <Typography variant="h4" gutterBottom color="primary">
+        ⚔️ 冒険者ステータス
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        あなたの冒険の記録と実績
       </Typography>
 
       <Grid container spacing={3}>
         {/* プロフィールカード */}
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
+          <Card sx={{ background: 'linear-gradient(145deg, #fff 0%, #f0f0f0 100%)' }}>
             <CardContent>
               <Box display="flex" flexDirection="column" alignItems="center">
                 <Avatar
@@ -222,18 +225,54 @@ export const DashboardPage = () => {
                     mb: 2,
                     bgcolor: 'primary.main',
                     fontSize: '3rem',
+                    border: '3px solid',
+                    borderColor: 'primary.light',
                   }}
                 >
                   {profile.profile?.nickname.charAt(0).toUpperCase()}
                 </Avatar>
-                <Typography variant="h5" gutterBottom>
+                <Typography variant="h5" gutterBottom fontWeight="bold">
                   {profile.profile?.nickname}
+                </Typography>
+                <Chip
+                  label="見習い商人"
+                  color="secondary"
+                  sx={{ mb: 1, fontWeight: 'bold' }}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
+                  Lv. {Math.floor((myItems.length + myPurchases.length) / 3) + 1}
                 </Typography>
                 {profile.profile?.bio && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
                     {profile.profile.bio}
                   </Typography>
                 )}
+
+                {/* RPG風ステータス */}
+                <Box sx={{ width: '100%', mt: 2, mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    📊 ステータス
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="caption">⚔️ 出品力</Typography>
+                    <Typography variant="caption" fontWeight="bold">
+                      {Math.min(100, myItems.length * 10)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="caption">🛡️ 購入力</Typography>
+                    <Typography variant="caption" fontWeight="bold">
+                      {Math.min(100, myPurchases.length * 15)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="caption">✨ 評価</Typography>
+                    <Typography variant="caption" fontWeight="bold">
+                      {Math.min(100, (myItems.filter(i => i.status === 'sold_out').length * 20))}
+                    </Typography>
+                  </Box>
+                </Box>
+
                 <Chip
                   label={profile.email}
                   size="small"
@@ -257,32 +296,82 @@ export const DashboardPage = () => {
         {/* アカウント情報 */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              アカウント情報
+            <Typography variant="h5" gutterBottom sx={{ fontFamily: 'MedievalSharp, serif', color: '#d4af37' }}>
+              💰 所持金・魔力
             </Typography>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 3 }} />
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                ユーザーID
-              </Typography>
-              <Typography variant="body1">#{profile.id}</Typography>
+            {/* ゴールド */}
+            <Box
+              sx={{
+                mb: 3,
+                p: 2,
+                background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%)',
+                border: '2px solid #d4af37',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontFamily: 'Cinzel, serif',
+                      color: '#8b7355',
+                      fontWeight: 700,
+                    }}
+                  >
+                    💰 ゴールド
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontFamily: 'Cinzel, serif',
+                    color: '#d4af37',
+                    fontWeight: 800,
+                    textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  {formatCurrency(profile.wallet?.balance || 0)}
+                </Typography>
+              </Box>
             </Box>
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                メールアドレス
-              </Typography>
-              <Typography variant="body1">{profile.email}</Typography>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Firebase UID
-              </Typography>
-              <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                {profile.firebase_uid}
-              </Typography>
+            {/* MP */}
+            <Box
+              sx={{
+                p: 2,
+                background: 'linear-gradient(135deg, rgba(74, 124, 44, 0.1) 0%, rgba(74, 124, 44, 0.05) 100%)',
+                border: '2px solid #f093fb',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontFamily: 'Cinzel, serif',
+                      color: '#ac5e68ff',
+                      fontWeight: 700,
+                    }}
+                  >
+                    ✨ マジックポイント
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontFamily: 'Cinzel, serif',
+                    color: '#f5576c',
+                    fontWeight: 800,
+                    textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  {profile.wallet?.points.toLocaleString() || 0} MP
+                </Typography>
+              </Box>
             </Box>
           </Paper>
 
@@ -315,36 +404,42 @@ export const DashboardPage = () => {
           </Paper>
         </Grid>
 
-        {/* ウォレット情報 */}
+        {/* ウォレット情報
         <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
                 <AccountBalanceWalletIcon
-                  sx={{ fontSize: 40, color: 'primary.main', mr: 2 }}
+                  sx={{ fontSize: 40, mr: 2 }}
                 />
-                <Typography variant="h6">ウォレット残高</Typography>
+                <Typography variant="h6">💰 所持金</Typography>
               </Box>
-              <Typography variant="h4" color="primary">
-                ¥{profile.wallet?.balance.toLocaleString() || 0}
+              <Typography variant="h4" fontWeight="bold">
+                {formatCurrency(profile.wallet?.balance || 0)}
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.9, mt: 1, display: 'block' }}>
+                冒険で得た報酬
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <StarsIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
-                <Typography variant="h6">ポイント</Typography>
+                <StarsIcon sx={{ fontSize: 40, mr: 2 }} />
+                <Typography variant="h6">✨ マジックポイント</Typography>
               </Box>
-              <Typography variant="h4" color="warning.main">
-                {profile.wallet?.points.toLocaleString() || 0} pt
+              <Typography variant="h4" fontWeight="bold">
+                {profile.wallet?.points.toLocaleString() || 0} MP
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.9, mt: 1, display: 'block' }}>
+                特別な力を秘めたポイント
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Grid> */}
 
         {/* 商品一覧セクション */}
         <Grid size={{ xs: 12 }}>
@@ -361,11 +456,11 @@ export const DashboardPage = () => {
             </Tabs>
 
             <Box sx={{ p: 3 }}>
-                {messageError && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {messageError}
-                  </Alert>
-                )}
+              {messageError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {messageError}
+                </Alert>
+              )}
               {itemsLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <Typography>読み込み中...</Typography>
@@ -410,13 +505,13 @@ export const DashboardPage = () => {
                               )}
                               <CardContent>
                                 <Typography variant="h6" noWrap>
-                                  {item.name}
+                                  {item.rpg_name || item.name}
                                 </Typography>
                                 <Typography variant="h5" color="primary" sx={{ mt: 1 }}>
-                                  ¥{item.price.toLocaleString()}
+                                  {formatCurrency(item.price)}
                                 </Typography>
                                 <Chip
-                                  label={item.status}
+                                  label={itemStatusLabels[item.status]}
                                   size="small"
                                   color={item.status === 'on_sale' ? 'success' : 'default'}
                                   sx={{ mt: 1 }}
@@ -519,11 +614,11 @@ export const DashboardPage = () => {
                                   {transaction.item?.name}
                                 </Typography>
                                 <Typography variant="h5" color="primary" sx={{ mt: 1 }}>
-                                  ¥{transaction.price.toLocaleString()}
+                                  {formatCurrency(transaction.price)}
                                 </Typography>
                                 <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                                  <Chip label={transaction.transaction_status} size="small" />
-                                  <Chip label={transaction.payment_status} size="small" color="primary" />
+                                  <Chip label={transactionStatusLabels[transaction.transaction_status] || transaction.transaction_status} size="small" />
+                                  <Chip label={paymentStatusLabels[transaction.payment_status] || transaction.payment_status} size="small" color="primary" />
                                 </Box>
                               </CardContent>
                               <CardActions sx={{ flexDirection: 'column', gap: 1 }}>

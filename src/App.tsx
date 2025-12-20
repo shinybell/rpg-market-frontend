@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { CircularProgress, Box } from '@mui/material';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { Header } from './components/Header';
+import { ShopkeeperNavigator } from './components/ShopkeeperNavigator';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterProfilePage } from './pages/RegisterProfilePage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -63,6 +64,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {showHeader && <Header />}
+      {showHeader && (
+        <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2, pt: 3 }}>
+          <ShopkeeperNavigator />
+        </Box>
+      )}
       {children}
     </>
   );

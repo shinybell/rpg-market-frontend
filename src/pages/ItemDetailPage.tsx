@@ -38,6 +38,7 @@ import LikeButton from '../features/item/components/LikeButton';
 import CommentSection from '../features/item/components/CommentSection';
 import { useAuth } from '../hooks/useAuth';
 import { conditionLabels, shippingPayerLabels, shippingDaysLabels } from '../constants/item';
+import { formatCurrency } from '../utils/currency';
 
 export const ItemDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -316,11 +317,11 @@ export const ItemDetailPage = () => {
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <Chip label={conditionLabels[item.condition]} color="primary" />
             <Chip label={item.status === 'on_sale' ? '販売中' : '売り切れ'} />
-            {item.rpg_name && <Chip label="RPG風" color="secondary" />}
+            {/* {item.rpg_name && <Chip label="RPG風" color="secondary" />} */}
           </Box>
 
           <Typography variant="h3" color="primary" fontWeight="bold" gutterBottom>
-            {item.rpg_name ? `${item.price.toLocaleString()}ゴールド` : `¥${item.price.toLocaleString()}`}
+            {formatCurrency(item.price)}
           </Typography>
 
           <Divider sx={{ my: 2 }} />
@@ -383,7 +384,7 @@ export const ItemDetailPage = () => {
               onClick={() => setOpenPurchaseModal(true)}
               sx={{ mb: 2 }}
             >
-              {item.status === 'on_sale' && item.stock > 0 ? '購入する' : '売り切れ'}
+              {item.status === 'on_sale' && item.stock > 0 ? '⚔️ 入手する' : '在庫切れ'}
             </Button>
           )}
 
@@ -465,15 +466,62 @@ export const ItemDetailPage = () => {
       </Grid>
 
       {/* 購入モーダル */}
-      <Dialog open={openPurchaseModal} onClose={() => setOpenPurchaseModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>購入確認</DialogTitle>
+      <Dialog
+        open={openPurchaseModal}
+        onClose={() => setOpenPurchaseModal(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+            border: '3px solid #8b7355',
+            boxShadow: 'inset 0 0 30px rgba(139, 115, 85, 0.15), 0 8px 24px rgba(0, 0, 0, 0.4)',
+          },
+        }}
+      >
+        <DialogTitle sx={{
+          borderBottom: '2px solid #8b7355',
+          pb: 2,
+          fontFamily: 'Cinzel, serif',
+          color: '#8b7355',
+          fontWeight: 700,
+        }}>
+          📦 アイテム入手
+        </DialogTitle>
         <DialogContent>
-          <Typography variant="h6" gutterBottom>配送先</Typography>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              fontFamily: 'Cinzel, serif',
+              color: '#1a1410',
+              mt: 2,
+            }}
+          >
+            配送先
+          </Typography>
           <FormControl fullWidth margin="normal">
             <InputLabel>配送先を選択</InputLabel>
             <Select
               value={selectedAddressId}
               onChange={(e) => setSelectedAddressId(e.target.value as number | 'new')}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+                    border: '2px solid #8b7355',
+                    '& .MuiMenuItem-root': {
+                      color: '#1a1410',
+                      fontFamily: 'Cinzel, serif',
+                      '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.2)' },
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(212, 175, 55, 0.3)',
+                        '&:hover': { backgroundColor: 'rgba(212, 175, 55, 0.4)' },
+                      },
+                    },
+                  },
+                },
+              }}
             >
               {addresses.map((addr) => (
                 <MenuItem key={addr.id} value={addr.id}>
@@ -553,7 +601,17 @@ export const ItemDetailPage = () => {
             </Paper>
           )}
 
-          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>支払い方法</Typography>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              mt: 2,
+              fontFamily: 'Cinzel, serif',
+              color: '#1a1410',
+            }}
+          >
+            支払い方法
+          </Typography>
           <RadioGroup
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
@@ -562,7 +620,17 @@ export const ItemDetailPage = () => {
             <FormControlLabel value="card" control={<Radio />} label="クレジットカード" />
           </RadioGroup>
 
-          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>ポイント使用</Typography>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              mt: 2,
+              fontFamily: 'Cinzel, serif',
+              color: '#1a1410',
+            }}
+          >
+            ポイント使用
+          </Typography>
           <TextField
             type="number"
             value={pointsUsed}
@@ -571,31 +639,51 @@ export const ItemDetailPage = () => {
             margin="normal"
           />
 
-          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>最終料金</Typography>
-          <Typography variant="body1">¥{Math.max(0, item.price - pointsUsed)}</Typography>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{
+              mt: 2,
+              fontFamily: 'Cinzel, serif',
+              color: '#1a1410',
+            }}
+          >
+            最終料金
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              color: '#1a1410',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '1.2rem',
+              fontWeight: 700,
+            }}
+          >
+            {formatCurrency(Math.max(0, item.price - pointsUsed))}
+          </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ borderTop: '2px solid #8b7355', pt: 2 }}>
           <Button onClick={() => setOpenPurchaseModal(false)}>キャンセル</Button>
           <Button
             onClick={() => setConfirmDialogOpen(true)}
             variant="contained"
             disabled={!selectedAddressId || selectedAddressId === 'new'}
           >
-            購入確認へ
+            ⚔️ 入手する
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* 確認ダイアログ */}
       <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
-        <DialogTitle>最終確認</DialogTitle>
+        <DialogTitle>⚔️ 最終確認</DialogTitle>
         <DialogContent>
-          <Typography>本当に購入しますか？</Typography>
+          <Typography>このアイテムを入手しますか？</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmDialogOpen(false)}>キャンセル</Button>
           <Button onClick={handlePurchase} variant="contained" disabled={purchasing}>
-            {purchasing ? <CircularProgress size={20} /> : '購入'}
+            {purchasing ? <CircularProgress size={20} /> : '入手する'}
           </Button>
         </DialogActions>
       </Dialog>

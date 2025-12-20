@@ -36,8 +36,18 @@ export const ItemListPage = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          アイテム一覧
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{
+            fontFamily: 'MedievalSharp, serif',
+            color: '#d4af37',
+            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.7)',
+            textAlign: 'center',
+          }}
+        >
+          ⚔️ 冒険者の市場 ⚔️
         </Typography>
       </Box>
 

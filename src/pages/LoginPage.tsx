@@ -66,13 +66,55 @@ export const LoginPage = () => {
         minHeight="100vh"
         py={4}
       >
-        <Paper elevation={3} sx={{ width: '100%', p: 4 }}>
-          <Typography variant="h4" component="h1" textAlign="center" gutterBottom>
-            {isRegister ? '新規登録' : 'ログイン'}
+        <Paper
+          elevation={6}
+          sx={{
+            width: '100%',
+            p: 4,
+            background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+            border: '3px solid #8b7355',
+            boxShadow: 'inset 0 0 30px rgba(139, 115, 85, 0.15), 0 8px 24px rgba(0, 0, 0, 0.4)',
+            position: 'relative',
+            '&::before': {
+              content: '"⚔️"',
+              position: 'absolute',
+              top: -15,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '2rem',
+              background: 'linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 100%)',
+              padding: '0 20px',
+              border: '2px solid #8b7355',
+              borderRadius: '50%',
+            },
+          }}
+        >
+          <Typography
+            variant="h4"
+            component="h1"
+            textAlign="center"
+            gutterBottom
+            sx={{
+              fontFamily: 'MedievalSharp, serif',
+              color: '#8b7355',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
+              mb: 1,
+            }}
+          >
+            {isRegister ? '🏰 ギルド登録' : '🏰 ギルド入口'}
           </Typography>
 
-          <Typography variant="body2" color="text.secondary" textAlign="center" mb={3}>
-            RPG Market へようこそ
+          <Typography
+            variant="body2"
+            textAlign="center"
+            mb={3}
+            sx={{
+              color: '#5d4037',
+              fontFamily: 'Cinzel, serif',
+              fontStyle: 'italic',
+            }}
+          >
+            RPG Market へようこそ、冒険者よ
           </Typography>
 
           {error && (
