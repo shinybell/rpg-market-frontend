@@ -185,3 +185,31 @@ export const addressApi = {
   deleteAddress: (id: number) =>
     apiClient.delete(`/api/addresses/${id}`),
 };
+
+export const messageApi = {
+  getMessages: (transactionId: number) =>
+    apiClient.get(`/api/transactions/${transactionId}/messages`),
+
+  sendMessage: (transactionId: number, content: string) =>
+    apiClient.post(`/api/transactions/${transactionId}/messages`, { content }),
+
+  getTransaction: (transactionId: number) =>
+    apiClient.get(`/api/transactions/${transactionId}`),
+
+  getUnreadCount: () =>
+    apiClient.get('/api/messages/unread'),
+};
+
+// itemApiに追加メソッドを拡張
+export const extendedItemApi = {
+  ...itemApi,
+
+  getMyItems: () =>
+    apiClient.get('/api/users/me/items'),
+
+  getMyPurchases: () =>
+    apiClient.get('/api/users/me/purchases'),
+
+  getItemTransaction: (itemId: number) =>
+    apiClient.get(`/api/items/${itemId}/transaction`),
+};

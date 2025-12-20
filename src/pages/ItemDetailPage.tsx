@@ -28,9 +28,11 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { itemApi, addressApi } from '../services/api';
+import MessageIcon from '@mui/icons-material/Message';
+import { itemApi, addressApi, extendedItemApi } from '../services/api';
 import type { Item } from '../types/item';
 import type { Address } from '../types/address';
+import type { Transaction } from '../types/message';
 import type { AxiosError } from 'axios';
 import LikeButton from '../features/item/components/LikeButton';
 import CommentSection from '../features/item/components/CommentSection';
@@ -52,7 +54,8 @@ export const ItemDetailPage = () => {
   const [pointsUsed, setPointsUsed] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  
+  const [transaction, setTransaction] = useState<Transaction | null>(null);
+
   // 新規住所作成用のstate
   const [newAddress, setNewAddress] = useState({
     name: '',
@@ -100,6 +103,23 @@ export const ItemDetailPage = () => {
     fetchAddresses();
   }, [user]);
 
+  // 取引情報を取得（購入者または出品者の場合のみ）
+  useEffect(() => {
+    const fetchTransaction = async () => {
+      if (!id || !profile) return;
+
+      try {
+        const response = await extendedItemApi.getItemTransaction(Number(id));
+        setTransaction(response.data);
+      } catch {
+        // 取引が存在しない、またはアクセス権限がない場合はエラーを無視
+        setTransaction(null);
+      }
+    };
+
+    fetchTransaction();
+  }, [id, profile]);
+
   const handleCreateAddress = async () => {
     // バリデーション
     if (!newAddress.name || !newAddress.postal_code || !newAddress.address || !newAddress.phone) {
@@ -123,16 +143,16 @@ export const ItemDetailPage = () => {
     try {
       const response = await addressApi.createAddress(newAddress);
       const createdAddress = response.data;
-      
+
       // 住所リストに追加
       setAddresses([...addresses, createdAddress]);
-      
+
       // 作成した住所を自動選択
       setSelectedAddressId(createdAddress.id);
-      
+
       // フォームをリセット
       setNewAddress({ name: '', postal_code: '', address: '', phone: '' });
-      
+
       alert('住所を登録しました');
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
@@ -187,7 +207,7 @@ export const ItemDetailPage = () => {
 
   const sortedImages = item.images?.sort((a, b) => a.display_order - b.display_order) || [];
   const mainImage = sortedImages[selectedImageIndex]?.image_url || '/placeholder.jpg';
-  
+
   // 出品者本人かどうかを判定
   const isOwner = profile && item.seller_id === profile.id;
 
@@ -355,6 +375,20 @@ export const ItemDetailPage = () => {
             </Button>
           )}
 
+          {/* DMボタン（購入者または出品者の場合のみ表示） */}
+          {transaction && (
+            <Button
+              variant="outlined"
+              size="large"
+              fullWidth
+              startIcon={<MessageIcon />}
+              onClick={() => navigate(`/messages/${transaction.id}`)}
+              sx={{ mb: 2 }}
+            >
+              メッセージ
+            </Button>
+          )}
+
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary">
               👁 {item.view_count} 閲覧
@@ -426,7 +460,7 @@ export const ItemDetailPage = () => {
               <Typography variant="subtitle1" gutterBottom>
                 新規住所登録
               </Typography>
-              
+
               {addressError && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {addressError}
@@ -510,9 +544,9 @@ export const ItemDetailPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenPurchaseModal(false)}>キャンセル</Button>
-          <Button 
-            onClick={() => setConfirmDialogOpen(true)} 
-            variant="contained" 
+          <Button
+            onClick={() => setConfirmDialogOpen(true)}
+            variant="contained"
             disabled={!selectedAddressId || selectedAddressId === 'new'}
           >
             購入確認へ
