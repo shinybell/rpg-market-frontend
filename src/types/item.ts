@@ -61,12 +61,12 @@ export interface CreateItemRequest {
   shipping_days: ShippingDays;
   prefecture_id?: number;
   status: ItemStatus;
-  images?: Array<{
+  images: Array<{
     image_url: string;
     display_order: number;
   }>;
-  rpg_name?: string;
-  rpg_description?: string;
+  rpg_name: string;
+  rpg_description: string;
 }
 
 export interface UpdateItemRequest {

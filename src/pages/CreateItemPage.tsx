@@ -248,19 +248,29 @@ export const CreateItemPage = () => {
       return;
     }
 
+    // 画像の必須チェック
+    if (selectedImages.length === 0) {
+      setError('商品画像を1枚以上アップロードしてください');
+      return;
+    }
+
+    // RPG鑑定の必須チェック
+    if (!rpgName || !rpgDescription) {
+      setError('出品前に「鑑定を依頼する」ボタンでRPG風に変換してください');
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // 画像がある場合はアップロード
+      // 画像をアップロード
       let imageUrls: string[] = [];
-      if (selectedImages.length > 0) {
-        try {
-          imageUrls = await uploadImages(selectedImages);
-        } catch {
-          setError('画像のアップロードに失敗しました');
-          setLoading(false);
-          return;
-        }
+      try {
+        imageUrls = await uploadImages(selectedImages);
+      } catch {
+        setError('画像のアップロードに失敗しました');
+        setLoading(false);
+        return;
       }
 
       const images = imageUrls.map((url, index) => ({
@@ -279,8 +289,8 @@ export const CreateItemPage = () => {
         shipping_days: formData.shipping_days,
         status: formData.status,
         images,
-        rpg_name: rpgName || undefined,
-        rpg_description: rpgDescription || undefined,
+        rpg_name: rpgName,
+        rpg_description: rpgDescription,
       });
 
       setSuccess(true);
@@ -322,7 +332,7 @@ export const CreateItemPage = () => {
           {/* 画像アップロード */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" gutterBottom>
-              商品画像
+              商品画像 <Typography component="span" color="error">*必須（1枚以上）</Typography>
             </Typography>
 
             {imagePreviews.length > 0 ? (
@@ -549,6 +559,9 @@ export const CreateItemPage = () => {
 
           {/* RPG鑑定ボタン */}
           <Box sx={{ mt: 3, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              RPG鑑定 <Typography component="span" color="error">*必須</Typography>
+            </Typography>
             <Button
               variant="outlined"
               color="secondary"
@@ -560,7 +573,7 @@ export const CreateItemPage = () => {
               {appraising ? 'RPG鑑定中...' : '鑑定を依頼する（RPG風に変換）'}
             </Button>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
-              商品名と説明を入力後、クリックするとRPG風の名前と説明文に変換します
+              商品名と説明を入力後、必ずクリックしてRPG風の名前と説明文に変換してください
             </Typography>
             {rpgName && (
               <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
@@ -591,7 +604,7 @@ export const CreateItemPage = () => {
               type="submit"
               variant="contained"
               fullWidth
-              disabled={loading}
+              disabled={loading || selectedImages.length === 0 || !rpgName || !rpgDescription}
             >
               {loading ? <CircularProgress size={24} /> : '出品する'}
             </Button>
