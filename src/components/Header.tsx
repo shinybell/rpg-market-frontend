@@ -26,11 +26,6 @@ export const Header = () => {
     navigate('/dashboard');
   };
 
-  const handleProfile = () => {
-    handleMenuClose();
-    navigate('/register-profile');
-  };
-
   const handleLogout = async () => {
     handleMenuClose();
     await logout();

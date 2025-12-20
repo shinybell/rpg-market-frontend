@@ -1,6 +1,6 @@
 import { Box, Paper, Typography, Avatar } from '@mui/material';
 import { useLocation } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 
 /**
  * 店主ナビゲーターコンポーネント
@@ -10,7 +10,7 @@ export const ShopkeeperNavigator = () => {
   const location = useLocation();
 
   // 時間帯に応じた挨拶を取得
-  const getGreeting = (): string => {
+  const getGreeting = useCallback((): string => {
     const hour = new Date().getHours();
 
     if (hour >= 5 && hour < 10) {
@@ -22,10 +22,10 @@ export const ShopkeeperNavigator = () => {
     } else {
       return 'こんな時間に...よほど探してる品があるんだな。俺も付き合うぜ。';
     }
-  };
+  }, []);
 
   // ページに応じたセリフを取得
-  const getPageSpecificMessage = (): string | null => {
+  const getPageSpecificMessage = useCallback((): string | null => {
     const path = location.pathname;
 
     if (path === '/items') {
@@ -43,12 +43,12 @@ export const ShopkeeperNavigator = () => {
     }
 
     return null;
-  };
+  }, [location.pathname]);
 
   // 表示するメッセージを決定（ページ固有メッセージ優先、なければ挨拶）
   const message = useMemo(() => {
     return getPageSpecificMessage() || getGreeting();
-  }, [location.pathname]);
+  }, [getPageSpecificMessage, getGreeting]);
 
   return (
     <Paper
